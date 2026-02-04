@@ -117,8 +117,3 @@ function KonvaItem({ item, isSelected, onSelect, onChange }) {
     </>
   );
 }
-
-
-// リモートリポジトリに正しく挙げられているかの確認用コメントdesu
-// "こんにちは"
-// hasfshsfrghsehg
