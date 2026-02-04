@@ -117,5 +117,3 @@ function KonvaItem({ item, isSelected, onSelect, onChange }) {
     </>
   );
 }
-
-// hasfshsfrghsehg
