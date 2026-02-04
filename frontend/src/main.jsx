@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import CenterObjectCanvas from './conponents/CenterObjectCanvas.jsx';
+import ObjectMenuWithCanvas from './conponents/ObjectMenuWithCanvas.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <CenterObjectCanvas />
+    <ObjectMenuWithCanvas />
   </StrictMode>,
 );
