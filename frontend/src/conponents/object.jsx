@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import KonvaCanvas from "./App.jsx";
+import KonvaCanvas from "../App.jsx";
 
 export default function CanvasPage() {
   const [toolbarOpen, setToolbarOpen] = useState(true);
@@ -72,7 +72,7 @@ export default function CanvasPage() {
             return (
               <button
                 key={t.id}
-                onClick={() => setSelectedTool(t.id)} // ← いまはここまで（選択状態だけ）
+                onClick={() => setSelectedTool(t.id)} 
                 style={{
                   textAlign: "left",
                   padding: "10px 12px",
