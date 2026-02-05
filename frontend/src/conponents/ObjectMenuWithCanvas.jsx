@@ -1,13 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Rect, Text, Transformer } from "react-konva";
-import { OBJECT_TYPES } from "./objects";
 import { useCanvasEditor } from "./useCanvasEditor";
 
 /**
- * objects.js で定義したオブジェクト一覧をメニューとして表示し、
- * クリックでCanvas上に追加、その後ドラッグで移動できるコンポーネント
+ * キャンバス＋ポップアップのみ。メニュー（オブジェクト追加UI）は object.jsx の右パネルに委譲。
+ * ref で addObjectFromType を公開し、object.jsx のボタンから呼ぶ。
  */
-const ObjectMenuWithCanvas = () => {
+const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
   const stageWidth = 900;
   const stageHeight = 520;
 
@@ -40,10 +39,20 @@ const ObjectMenuWithCanvas = () => {
     openDeleteConfirm,
     closeDeleteConfirm,
     confirmDelete,
+    renameObject,
   } = useCanvasEditor({ stageWidth, stageHeight });
 
   const LONG_PRESS_MS = 1000;
   const longPressTimerRef = useRef(null);
+  const [renameEditing, setRenameEditing] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  useEffect(() => {
+    if (!popupItemId) {
+      setRenameEditing(false);
+      setRenameDraft("");
+    }
+  }, [popupItemId]);
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current != null) {
@@ -77,6 +86,7 @@ const ObjectMenuWithCanvas = () => {
   const trRef = useRef(null);
   const shapeRefs = useRef({});
   const lastDragPosRef = useRef(null);
+  const stageContainerRef = useRef(null);
 
   // 単一選択時に Transformer を選択中ノードに紐付ける
   useEffect(() => {
@@ -94,51 +104,37 @@ const ObjectMenuWithCanvas = () => {
     }
   }, [selectedIds, items]);
 
+  React.useImperativeHandle(ref, () => ({
+    addObjectFromType,
+  }), [addObjectFromType]);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const typeJson = e.dataTransfer.getData("application/json");
+    if (!typeJson) return;
+    try {
+      const type = JSON.parse(typeJson);
+      const rect = stageContainerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      addObjectFromType(type, { x, y });
+    } catch (_) {}
+  };
+
   return (
-    <div style={{ padding: 16, display: "flex", gap: 16 }}>
-      {/* 左側：オブジェクト選択メニュー */}
+    <div style={{ padding: 16 }}>
       <div
-        style={{
-          width: 240,
-          border: "1px solid #444",
-          borderRadius: 8,
-          padding: 12,
-          background: "#111827",
-          color: "#e5e7eb",
-          fontSize: 14,
-        }}
+        ref={stageContainerRef}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        style={{ display: "inline-block" }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-          オブジェクトメニュー（仮）
-        </div>
-        <div style={{ fontSize: 12, marginBottom: 8 }}>
-          クリックするとCanvas中央付近に追加され、ドラッグで移動できます。
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {OBJECT_TYPES.map((type) => (
-            <button
-              key={type.id}
-              type="button"
-              onClick={() => addObjectFromType(type)}
-              style={{
-                padding: "6px 8px",
-                textAlign: "left",
-                borderRadius: 6,
-                border: "1px solid #4b5563",
-                background: "#1f2937",
-                color: "#e5e7eb",
-                cursor: "pointer",
-              }}
-            >
-              {type.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 右側：Canvas */}
-      <div>
         <Stage
           width={stageWidth}
           height={stageHeight}
@@ -294,6 +290,89 @@ const ObjectMenuWithCanvas = () => {
               boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
             }}
           >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              {renameEditing ? (
+                <>
+                  <input
+                    type="text"
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    placeholder="オブジェクト名"
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #4b5563",
+                      background: "#020617",
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      width: 140,
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newName = renameDraft.trim();
+                      if (newName) {
+                        renameObject(popupItemId, newName);
+                        setRenameEditing(false);
+                        setRenameDraft(newName);
+                      }
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #22c55e",
+                      background: "#16a34a",
+                      color: "#e5e7eb",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    適用
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenameEditing(false);
+                      setRenameDraft("");
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #4b5563",
+                      background: "#111827",
+                      color: "#e5e7eb",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item = items.find((i) => i.id === popupItemId);
+                    const current = item?.name ?? item?.label ?? "オブジェクト";
+                    setRenameDraft(current);
+                    setRenameEditing(true);
+                  }}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #4b5563",
+                    background: "#111827",
+                    color: "#e5e7eb",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  名前変更
+                </button>
+              )}
+            </div>
             <div
               style={{
                 display: "flex",
@@ -303,8 +382,8 @@ const ObjectMenuWithCanvas = () => {
               }}
             >
               <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-              {items.find((i) => i.id === popupItemId)?.label ?? "オブジェクト"}の中身
-            </h2>
+                {items.find((i) => i.id === popupItemId)?.name ?? items.find((i) => i.id === popupItemId)?.label ?? "オブジェクト"}の中身
+              </h2>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
                   type="button"
@@ -680,7 +759,9 @@ const ObjectMenuWithCanvas = () => {
       )}
     </div>
   );
-};
+});
+
+ObjectMenuWithCanvas.displayName = "ObjectMenuWithCanvas";
 
 export default ObjectMenuWithCanvas;
 
