@@ -1,10 +1,10 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import ObjectMenuWithCanvas from './conponents/ObjectMenuWithCanvas.jsx';
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import CanvasPage from './object.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ObjectMenuWithCanvas />
+    <CanvasPage />
   </StrictMode>,
 );
