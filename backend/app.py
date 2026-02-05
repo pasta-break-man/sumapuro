@@ -105,5 +105,60 @@ def drop_object_table(object_name):
     return jsonify({"status": "deleted"}), 200
 
 
+@app.route("/api/contents/delete", methods=["POST"])
+def delete_contents():
+    """オブジェクト中身の指定行を削除（object_name と indices）"""
+    body = request.get_json()
+    if not body or "object_name" not in body or "indices" not in body:
+        return jsonify({"error": "object_name and indices are required"}), 400
+
+    object_name = body.get("object_name", "")
+    indices = body.get("indices", [])
+    if not isinstance(indices, list):
+        return jsonify({"error": "indices must be an array"}), 400
+
+    table_name = sanitize_table_name(object_name)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:n"),
+            {"n": table_name},
+        ).first()
+        if not row:
+            return jsonify({"status": "ok"}), 200
+
+        # id を id 昇順で取得し、指定インデックスの行を削除
+        ids_result = conn.execute(
+            text(f'SELECT id FROM "{table_name}" ORDER BY id')
+        ).fetchall()
+        ids_list = [r[0] for r in ids_result]
+        to_delete = [ids_list[i] for i in indices if 0 <= i < len(ids_list)]
+        if to_delete:
+            placeholders = ", ".join(f":id{i}" for i in range(len(to_delete)))
+            params = {f"id{i}": v for i, v in enumerate(to_delete)}
+            conn.execute(
+                text(f'DELETE FROM "{table_name}" WHERE id IN ({placeholders})'),
+                params,
+            )
+            conn.commit()
+    return jsonify({"status": "deleted"}), 200
+
+
+@app.route("/api/db/reset", methods=["POST"])
+def reset_db():
+    """オブジェクト用テーブルをすべて削除し、キャンバス初期化に合わせる"""
+    with engine.connect() as conn:
+        tables = conn.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        ).fetchall()
+        for (name,) in tables:
+            if name == "items":
+                continue
+            conn.execute(text(f'DROP TABLE IF EXISTS "{name}"'))
+        conn.commit()
+    return jsonify({"status": "reset"}), 200
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

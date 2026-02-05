@@ -157,8 +157,8 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     );
   }, []);
 
-  // 選択行を削除（contentsActions 使用）
-  const deleteSelectedRows = useCallback(() => {
+  // 選択行を削除（画面上＋DB に反映）
+  const deleteSelectedRows = useCallback(async () => {
     if (!popupItemId || selectedRowIndices.length === 0) return;
     const item = items.find((x) => x.id === popupItemId);
     if (!item) return;
@@ -170,6 +170,20 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     updateItem(popupItemId, { contents: nextContents });
     setSelectionMode(false);
     setSelectedRowIndices([]);
+
+    const objectName = item.name ?? item.label ?? "";
+    if (objectName) {
+      try {
+        await fetch(`${API_BASE}/api/contents/delete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            object_name: objectName,
+            indices: selectedRowIndices,
+          }),
+        });
+      } catch (_) {}
+    }
   }, [popupItemId, items, selectedRowIndices, updateItem]);
 
   const resizeItem = useCallback((id, { x, y, width, height }) => {

@@ -1,6 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import ObjectMenuWithCanvas from "./ObjectMenuWithCanvas";
 import { OBJECT_TYPES } from "./objects";
+
+const API_BASE = "http://localhost:5000";
 
 /**
  * キャンバスページ：右スライドのオブジェクトメニュー + キャンバス
@@ -9,6 +11,11 @@ import { OBJECT_TYPES } from "./objects";
 export default function CanvasPage() {
   const [toolbarOpen, setToolbarOpen] = useState(true);
   const canvasRef = useRef(null);
+
+  // キャンバスページを開いたとき（サーバ再起動・リロードでキャンバスが空になるため DB も初期化）
+  useEffect(() => {
+    fetch(`${API_BASE}/api/db/reset`, { method: "POST" }).catch(() => {});
+  }, []);
 
   const handleAddObject = (type) => {
     if (canvasRef.current?.addObjectFromType) {

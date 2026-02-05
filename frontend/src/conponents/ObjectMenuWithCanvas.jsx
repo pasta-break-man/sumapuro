@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Rect, Text, Transformer } from "react-konva";
 import { useCanvasEditor } from "./useCanvasEditor";
 
@@ -44,6 +44,15 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
 
   const LONG_PRESS_MS = 1000;
   const longPressTimerRef = useRef(null);
+  const [renameEditing, setRenameEditing] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  useEffect(() => {
+    if (!popupItemId) {
+      setRenameEditing(false);
+      setRenameDraft("");
+    }
+  }, [popupItemId]);
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current != null) {
@@ -281,27 +290,88 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
               boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 8 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  const item = items.find((i) => i.id === popupItemId);
-                  const current = item?.name ?? item?.label ?? "オブジェクト";
-                  const newName = window.prompt("オブジェクト名", current);
-                  if (newName != null && newName.trim()) renameObject(popupItemId, newName.trim());
-                }}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #4b5563",
-                  background: "#111827",
-                  color: "#e5e7eb",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                名前変更
-              </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              {renameEditing ? (
+                <>
+                  <input
+                    type="text"
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    placeholder="オブジェクト名"
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #4b5563",
+                      background: "#020617",
+                      color: "#e5e7eb",
+                      fontSize: 13,
+                      width: 140,
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newName = renameDraft.trim();
+                      if (newName) {
+                        renameObject(popupItemId, newName);
+                        setRenameEditing(false);
+                        setRenameDraft(newName);
+                      }
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #22c55e",
+                      background: "#16a34a",
+                      color: "#e5e7eb",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    適用
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenameEditing(false);
+                      setRenameDraft("");
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #4b5563",
+                      background: "#111827",
+                      color: "#e5e7eb",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item = items.find((i) => i.id === popupItemId);
+                    const current = item?.name ?? item?.label ?? "オブジェクト";
+                    setRenameDraft(current);
+                    setRenameEditing(true);
+                  }}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #4b5563",
+                    background: "#111827",
+                    color: "#e5e7eb",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  名前変更
+                </button>
+              )}
             </div>
             <div
               style={{
