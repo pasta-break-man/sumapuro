@@ -227,6 +227,10 @@ export default function ObjectCanvasStage({
                 "top-right",
                 "bottom-left",
                 "bottom-right",
+                "middle-left",
+                "middle-right",
+                "top-center",
+                "bottom-center",
               ]}
               boundBoxFunc={(oldBox, newBox) => {
                 if (newBox.width < 20 || newBox.height < 20) return oldBox;
