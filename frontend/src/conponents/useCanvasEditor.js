@@ -39,15 +39,25 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     );
   }, []);
 
-  const addObjectFromType = useCallback((type) => {
+  const LEFT_MARGIN = 48;
+
+  const addObjectFromType = useCallback((type, position) => {
     const { id: typeId, width, height, fill, label } = type;
+    const x =
+      position != null && typeof position.x === "number"
+        ? Math.max(0, Math.min(position.x, stageWidth - width))
+        : LEFT_MARGIN;
+    const y =
+      position != null && typeof position.y === "number"
+        ? Math.max(0, Math.min(position.y, stageHeight - height))
+        : (stageHeight - height) / 2;
     setItems((prev) => [
       ...prev,
       {
         id: `${typeId}-${Date.now()}`,
         typeId,
-        x: (stageWidth - width) / 2,
-        y: (stageHeight - height) / 2,
+        x,
+        y,
         width,
         height,
         fill,
