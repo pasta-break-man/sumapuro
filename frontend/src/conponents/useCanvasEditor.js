@@ -7,6 +7,16 @@ import {
 
 const MIN_SIZE = 20;
 
+/** 2つの矩形が重なっているか */
+function rectsOverlap(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
 export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -23,6 +33,9 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
 
   // オブジェクト削除確認ポップアップ（1秒長押しで表示）
   const [deleteConfirmItemId, setDeleteConfirmItemId] = useState(null);
+
+  // 入れ子確認ポップアップ（別オブジェクトに重ねてドロップしたとき）
+  const [nestConfirmPending, setNestConfirmPending] = useState(null);
 
   const updateItem = useCallback((id, patchOrFn) => {
     setItems((prev) =>
@@ -72,6 +85,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           label,
           name: displayName,
           contents: [],
+          parentId: undefined,
         },
       ];
     });
@@ -80,6 +94,75 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const handleDragEnd = useCallback((id, e) => {
     updateItem(id, { x: e.target.x(), y: e.target.y() });
   }, [updateItem]);
+
+  // ドラッグ終了時：別オブジェクトに重なっていれば入れ子確認ポップアップ、でなければ通常の位置更新
+  const handleDragEndWithNestCheck = useCallback(
+    (id, e) => {
+      const newX = e.target.x();
+      const newY = e.target.y();
+      const dragged = items.find((i) => i.id === id);
+      if (!dragged) return;
+      const dragRect = {
+        x: newX,
+        y: newY,
+        width: dragged.width,
+        height: dragged.height,
+      };
+      const overlapped = items.find(
+        (other) =>
+          other.id !== id &&
+          rectsOverlap(dragRect, {
+            x: other.x,
+            y: other.y,
+            width: other.width,
+            height: other.height,
+          })
+      );
+      if (overlapped) {
+        setNestConfirmPending({
+          dragItemId: id,
+          newX,
+          newY,
+          targetItemId: overlapped.id,
+        });
+        return;
+      }
+      handleDragEnd(id, e);
+    },
+    [items, handleDragEnd]
+  );
+
+  // 入れ子確定：子を items から削除し、親の nestedItems に移す。DB は触らない（子のテーブルも残す）
+  const confirmNest = useCallback(() => {
+    if (!nestConfirmPending) return;
+    const { dragItemId, newX, newY, targetItemId } = nestConfirmPending;
+    const dragItem = items.find((i) => i.id === dragItemId);
+    if (!dragItem) {
+      setNestConfirmPending(null);
+      return;
+    }
+    const nestedEntry = {
+      ...dragItem,
+      x: newX,
+      y: newY,
+      parentId: targetItemId,
+    };
+    setItems((prev) =>
+      prev
+        .filter((i) => i.id !== dragItemId)
+        .map((i) =>
+          i.id === targetItemId
+            ? { ...i, nestedItems: [...(i.nestedItems || []), nestedEntry] }
+            : i
+        )
+    );
+    setSelectedIds((prev) => prev.filter((id) => id !== dragItemId));
+    setNestConfirmPending(null);
+  }, [nestConfirmPending, items]);
+
+  const cancelNest = useCallback(() => {
+    setNestConfirmPending(null);
+  }, []);
 
   const toggleSelect = useCallback((id) => {
     setSelectedIds((prev) =>
@@ -287,6 +370,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     registerDraft,
     addObjectFromType,
     handleDragEnd,
+    handleDragEndWithNestCheck,
     toggleSelect,
     clearSelection,
     openPopupFor,
@@ -305,6 +389,9 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     openDeleteConfirm,
     closeDeleteConfirm,
     confirmDelete,
+    nestConfirmPending,
+    confirmNest,
+    cancelNest,
     renameObject,
   };
 };

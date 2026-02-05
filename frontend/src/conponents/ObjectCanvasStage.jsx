@@ -29,12 +29,17 @@ export default function ObjectCanvasStage({
       ref={stageContainerRef}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      style={{ display: "inline-block" }}
+      style={{ display: "inline-block", pointerEvents: "auto" }}
     >
       <Stage
         width={stageWidth}
         height={stageHeight}
-        style={{ border: "1px solid #333", background: "#020617" }}
+        style={{
+          border: "1px solid #333",
+          background: "#020617",
+          userSelect: "none",
+          cursor: "default",
+        }}
         onMouseDown={(e) => {
           if (e.target === e.target.getStage()) clearSelection();
         }}
@@ -43,7 +48,7 @@ export default function ObjectCanvasStage({
         }}
       >
         <Layer>
-          {items.map((item) => (
+          {items.filter((item) => !item.parentId).map((item) => (
             <React.Fragment key={item.id}>
               <Rect
                 ref={(node) => {

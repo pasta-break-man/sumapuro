@@ -51,6 +51,7 @@ export default function ContentsViewPopup({
   onToggleRowSelection,
   onClosePopup,
   renameObject,
+  nestedObjectNames = [],
 }) {
   const popupItem = items.find((i) => i.id === popupItemId);
   const titleName = popupItem?.name ?? popupItem?.label ?? "オブジェクト";
@@ -163,6 +164,35 @@ export default function ContentsViewPopup({
             </button>
           </div>
         </div>
+
+        {nestedObjectNames.length > 0 && (
+          <div
+            style={{
+              marginBottom: 8,
+              padding: "8px 10px",
+              borderRadius: 6,
+              background: "#0f172a",
+              fontSize: 13,
+            }}
+          >
+            <div style={{ color: "#94a3b8", marginBottom: 4 }}>入っているオブジェクト</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {nestedObjectNames.map((name, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    background: "#1e293b",
+                    color: "#e5e7eb",
+                  }}
+                >
+                  {name || "オブジェクト"}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {selectionMode && (
           <div

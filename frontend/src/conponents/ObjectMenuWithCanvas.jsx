@@ -4,6 +4,7 @@ import ObjectCanvasStage from "./ObjectCanvasStage";
 import ContentsViewPopup from "./ContentsViewPopup";
 import RegisterPopup from "./RegisterPopup";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import NestConfirmModal from "./NestConfirmModal";
 
 /**
  * キャンバス＋ポップアップのみ。メニュー（オブジェクト追加UI）は object.jsx の右パネルに委譲。
@@ -23,7 +24,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     registerPopupOpen,
     registerDraft,
     addObjectFromType,
-    handleDragEnd,
+    handleDragEndWithNestCheck,
     toggleSelect,
     clearSelection,
     openPopupFor,
@@ -42,6 +43,9 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     openDeleteConfirm,
     closeDeleteConfirm,
     confirmDelete,
+    nestConfirmPending,
+    confirmNest,
+    cancelNest,
     renameObject,
   } = useCanvasEditor({ stageWidth, stageHeight });
 
@@ -115,7 +119,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
   };
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 16, pointerEvents: "auto" }}>
       <ObjectCanvasStage
         stageWidth={stageWidth}
         stageHeight={stageHeight}
@@ -130,7 +134,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         clearSelection={clearSelection}
         startLongPressTimer={startLongPressTimer}
         clearLongPressTimer={clearLongPressTimer}
-        handleDragEnd={handleDragEnd}
+        handleDragEnd={handleDragEndWithNestCheck}
         toggleSelect={toggleSelect}
         openPopupFor={openPopupFor}
         moveSelectedBy={moveSelectedBy}
@@ -141,6 +145,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         <ContentsViewPopup
           popupItemId={popupItemId}
           items={items}
+          nestedObjectNames={(items.find((i) => i.id === popupItemId)?.nestedItems || []).map((n) => n.name ?? n.label)}
           popupContents={popupContents}
           selectionMode={selectionMode}
           selectedRowIndices={selectedRowIndices}
@@ -182,6 +187,13 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         <DeleteConfirmModal
           onConfirm={confirmDelete}
           onCancel={closeDeleteConfirm}
+        />
+      )}
+
+      {nestConfirmPending && (
+        <NestConfirmModal
+          onConfirm={confirmNest}
+          onCancel={cancelNest}
         />
       )}
     </div>
