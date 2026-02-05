@@ -51,14 +51,36 @@ export default function ContentsViewPopup({
   onToggleRowSelection,
   onClosePopup,
   renameObject,
-  nestedObjectNames = [],
+  nestedItems = [],
+  currentPopupItem,
+  viewingNestedId,
+  onOpenNestedContents,
+  onCloseNestedView,
+  onUnnest,
 }) {
-  const popupItem = items.find((i) => i.id === popupItemId);
-  const titleName = popupItem?.name ?? popupItem?.label ?? "オブジェクト";
+  const titleName = currentPopupItem?.name ?? currentPopupItem?.label ?? "オブジェクト";
+
+  const handleBackdropDrop = (e) => {
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+    try {
+      const { parentId, nestedItemId } = JSON.parse(raw);
+      if (parentId && nestedItemId) onUnnest?.(parentId, nestedItemId);
+    } catch (_) {}
+  };
 
   return (
-    <div style={POPUP_STYLE}>
-      <div style={CARD_STYLE}>
+    <div
+      style={POPUP_STYLE}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleBackdropDrop}
+    >
+      <div
+        style={CARD_STYLE}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleBackdropDrop}
+      >
         <div
           style={{
             display: "flex",
@@ -90,8 +112,14 @@ export default function ContentsViewPopup({
                 type="button"
                 onClick={() => {
                   const newName = renameDraft.trim();
-                  if (newName) {
-                    renameObject(popupItemId, newName);
+                  if (newName && currentPopupItem) {
+                    renameObject(
+                      currentPopupItem.id,
+                      newName,
+                      viewingNestedId
+                        ? { isNested: true, parentId: popupItemId }
+                        : {}
+                    );
                     onRenameApply(newName);
                   }
                 }}
@@ -110,7 +138,11 @@ export default function ContentsViewPopup({
           ) : (
             <button
               type="button"
-              onClick={() => onRenameStart(popupItem?.name ?? popupItem?.label ?? "オブジェクト")}
+              onClick={() =>
+                onRenameStart(
+                  currentPopupItem?.name ?? currentPopupItem?.label ?? "オブジェクト"
+                )
+              }
               style={BTN_BASE}
             >
               名前変更
@@ -126,7 +158,22 @@ export default function ContentsViewPopup({
             marginBottom: 8,
           }}
         >
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{titleName}の中身</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {viewingNestedId && (
+              <button
+                type="button"
+                onClick={onCloseNestedView}
+                style={{
+                  ...BTN_BASE,
+                  padding: "4px 8px",
+                  fontSize: 12,
+                }}
+              >
+                戻る
+              </button>
+            )}
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>{titleName}の中身</h2>
+          </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button
               type="button"
@@ -165,7 +212,7 @@ export default function ContentsViewPopup({
           </div>
         </div>
 
-        {nestedObjectNames.length > 0 && (
+        {!viewingNestedId && nestedItems.length > 0 && (
           <div
             style={{
               marginBottom: 8,
@@ -175,19 +222,34 @@ export default function ContentsViewPopup({
               fontSize: 13,
             }}
           >
-            <div style={{ color: "#94a3b8", marginBottom: 4 }}>入っているオブジェクト</div>
+            <div style={{ color: "#94a3b8", marginBottom: 4 }}>
+              入っているオブジェクト（ダブルクリックで中身表示・ドラッグでキャンバスに戻す）
+            </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {nestedObjectNames.map((name, idx) => (
+              {nestedItems.map((n) => (
                 <span
-                  key={idx}
+                  key={n.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      "application/json",
+                      JSON.stringify({
+                        parentId: popupItemId,
+                        nestedItemId: n.id,
+                      })
+                    );
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDoubleClick={() => onOpenNestedContents?.(n.id)}
                   style={{
                     padding: "2px 8px",
                     borderRadius: 4,
                     background: "#1e293b",
                     color: "#e5e7eb",
+                    cursor: "grab",
                   }}
                 >
-                  {name || "オブジェクト"}
+                  {n.name ?? n.label ?? "オブジェクト"}
                 </span>
               ))}
             </div>

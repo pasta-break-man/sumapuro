@@ -18,7 +18,12 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     items,
     selectedIds,
     popupItemId,
+    currentPopupItem,
     popupContents,
+    viewingNestedId,
+    openNestedContents,
+    closeNestedView,
+    unnestToCanvas,
     selectionMode,
     selectedRowIndices,
     registerPopupOpen,
@@ -145,7 +150,12 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         <ContentsViewPopup
           popupItemId={popupItemId}
           items={items}
-          nestedObjectNames={(items.find((i) => i.id === popupItemId)?.nestedItems || []).map((n) => n.name ?? n.label)}
+          currentPopupItem={currentPopupItem}
+          viewingNestedId={viewingNestedId}
+          nestedItems={items.find((i) => i.id === popupItemId)?.nestedItems ?? []}
+          onOpenNestedContents={openNestedContents}
+          onCloseNestedView={closeNestedView}
+          onUnnest={unnestToCanvas}
           popupContents={popupContents}
           selectionMode={selectionMode}
           selectedRowIndices={selectedRowIndices}

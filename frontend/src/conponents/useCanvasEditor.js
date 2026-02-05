@@ -37,6 +37,9 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   // 入れ子確認ポップアップ（別オブジェクトに重ねてドロップしたとき）
   const [nestConfirmPending, setNestConfirmPending] = useState(null);
 
+  // ポップアップ内で入れ子オブジェクトの中身を表示しているときのその id（null なら親を表示）
+  const [viewingNestedId, setViewingNestedId] = useState(null);
+
   const updateItem = useCallback((id, patchOrFn) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -46,6 +49,28 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
               ...(typeof patchOrFn === "function"
                 ? patchOrFn(item)
                 : patchOrFn),
+            }
+          : item
+      )
+    );
+  }, []);
+
+  const updateNestedItem = useCallback((parentId, nestedId, patchOrFn) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === parentId
+          ? {
+              ...item,
+              nestedItems: (item.nestedItems ?? []).map((n) =>
+                n.id === nestedId
+                  ? {
+                      ...n,
+                      ...(typeof patchOrFn === "function"
+                        ? patchOrFn(n)
+                        : patchOrFn),
+                    }
+                  : n
+              ),
             }
           : item
       )
@@ -177,6 +202,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     const item = items.find((x) => x.id === id);
     if (!item) return;
     setPopupItemId(id);
+    setViewingNestedId(null);
     setSelectionMode(false);
     setSelectedRowIndices([]);
   }, [items]);
@@ -184,6 +210,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   // 中身閲覧ポップアップを閉じる（登録ポップアップも閉じる）
   const closePopup = useCallback(() => {
     setPopupItemId(null);
+    setViewingNestedId(null);
     setSelectionMode(false);
     setSelectedRowIndices([]);
     setRegisterPopupOpen(false);
@@ -207,17 +234,42 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
 
   const API_BASE = "http://localhost:5000";
 
-  // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存
+  const currentPopupItem = useMemo(() => {
+    const parent = items.find((x) => x.id === popupItemId);
+    if (!parent) return null;
+    if (viewingNestedId) {
+      return parent.nestedItems?.find((n) => n.id === viewingNestedId) ?? null;
+    }
+    return parent;
+  }, [items, popupItemId, viewingNestedId]);
+
+  const popupContents = useMemo(() => {
+    return currentPopupItem?.contents ?? [];
+  }, [currentPopupItem]);
+
+  const openNestedContents = useCallback((nestedId) => {
+    setViewingNestedId(nestedId);
+    setSelectionMode(false);
+    setSelectedRowIndices([]);
+  }, []);
+
+  const closeNestedView = useCallback(() => {
+    setViewingNestedId(null);
+  }, []);
+
+  // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存（親／入れ子どちらでも可）
   const confirmRegisterAdd = useCallback(async () => {
-    if (!popupItemId) return;
-    const item = items.find((x) => x.id === popupItemId);
-    if (!item) return;
-    const currentContents = item.contents ?? [];
+    if (!popupItemId || !currentPopupItem) return;
+    const currentContents = currentPopupItem.contents ?? [];
     const nextContents = addContentRow(currentContents, registerDraft);
-    updateItem(popupItemId, { contents: nextContents });
+    if (currentPopupItem.parentId) {
+      updateNestedItem(popupItemId, currentPopupItem.id, { contents: nextContents });
+    } else {
+      updateItem(popupItemId, { contents: nextContents });
+    }
     closeRegisterPopup();
 
-    const objectName = item.name ?? item.label ?? "オブジェクト";
+    const objectName = currentPopupItem.name ?? currentPopupItem.label ?? "オブジェクト";
     try {
       await fetch(`${API_BASE}/api/contents`, {
         method: "POST",
@@ -230,7 +282,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         }),
       });
     } catch (_) {}
-  }, [popupItemId, items, registerDraft, updateItem, closeRegisterPopup]);
+  }, [popupItemId, currentPopupItem, registerDraft, updateItem, updateNestedItem, closeRegisterPopup]);
 
   // マイナス押下: 選択モードに入る
   const enterSelectionMode = useCallback(() => {
@@ -250,21 +302,24 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     );
   }, []);
 
-  // 選択行を削除（画面上＋DB に反映）
+  // 選択行を削除（画面上＋DB に反映）（親／入れ子どちらでも可）
   const deleteSelectedRows = useCallback(async () => {
-    if (!popupItemId || selectedRowIndices.length === 0) return;
-    const item = items.find((x) => x.id === popupItemId);
-    if (!item) return;
-    const currentContents = item.contents ?? [];
+    if (!popupItemId || !currentPopupItem || selectedRowIndices.length === 0)
+      return;
+    const currentContents = currentPopupItem.contents ?? [];
     const nextContents = deleteContentRowsByIndices(
       currentContents,
       selectedRowIndices
     );
-    updateItem(popupItemId, { contents: nextContents });
+    if (currentPopupItem.parentId) {
+      updateNestedItem(popupItemId, currentPopupItem.id, { contents: nextContents });
+    } else {
+      updateItem(popupItemId, { contents: nextContents });
+    }
     setSelectionMode(false);
     setSelectedRowIndices([]);
 
-    const objectName = item.name ?? item.label ?? "";
+    const objectName = currentPopupItem.name ?? currentPopupItem.label ?? "";
     if (objectName) {
       try {
         await fetch(`${API_BASE}/api/contents/delete`, {
@@ -277,7 +332,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         });
       } catch (_) {}
     }
-  }, [popupItemId, items, selectedRowIndices, updateItem]);
+  }, [popupItemId, currentPopupItem, selectedRowIndices, updateItem, updateNestedItem]);
 
   const resizeItem = useCallback((id, { x, y, width, height }) => {
     updateItem(id, {
@@ -299,9 +354,39 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     );
   }, [selectedIds]);
 
-  const popupContents = useMemo(() => {
-    return items.find((x) => x.id === popupItemId)?.contents ?? [];
-  }, [popupItemId, items]);
+  // 入れ子オブジェクトをキャンバスに戻す（ドラッグでポップアップ外にドロップしたとき）
+  const unnestToCanvas = useCallback(
+    (parentId, nestedItemId, position) => {
+      const parent = items.find((i) => i.id === parentId);
+      const nested = parent?.nestedItems?.find((n) => n.id === nestedItemId);
+      if (!parent || !nested) return;
+      const x =
+        position?.x != null
+          ? Math.max(0, Math.min(position.x, stageWidth - (nested.width ?? 120)))
+          : (stageWidth - (nested.width ?? 120)) / 2;
+      const y =
+        position?.y != null
+          ? Math.max(0, Math.min(position.y, stageHeight - (nested.height ?? 50)))
+          : (stageHeight - (nested.height ?? 50)) / 2;
+      const { parentId: _, ...restored } = { ...nested, x, y };
+      setItems((prev) =>
+        prev
+          .map((i) =>
+            i.id === parentId
+              ? {
+                  ...i,
+                  nestedItems: (i.nestedItems ?? []).filter(
+                    (n) => n.id !== nestedItemId
+                  ),
+                }
+              : i
+          )
+          .concat([restored])
+      );
+      if (viewingNestedId === nestedItemId) setViewingNestedId(null);
+    },
+    [items, stageWidth, stageHeight, viewingNestedId]
+  );
 
   // 長押しで削除確認を開く
   const openDeleteConfirm = useCallback((id) => {
@@ -336,13 +421,20 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     }
   }, [deleteConfirmItemId, popupItemId, items]);
 
-  // 名前変更（表示名更新 ＋ DB のテーブル名も変更）
+  // 名前変更（表示名更新 ＋ DB のテーブル名も変更）（親／入れ子どちらでも可）
   const renameObject = useCallback(
-    async (id, newName) => {
-      const item = items.find((x) => x.id === id);
+    async (id, newName, opts = {}) => {
+      const { isNested = false, parentId } = opts;
+      const item = isNested && parentId
+        ? items.find((i) => i.id === parentId)?.nestedItems?.find((n) => n.id === id)
+        : items.find((x) => x.id === id);
       if (!item || !newName.trim()) return;
       const oldName = item.name ?? item.label ?? "";
-      updateItem(id, { name: newName.trim() });
+      if (isNested && parentId) {
+        updateNestedItem(parentId, id, { name: newName.trim() });
+      } else {
+        updateItem(id, { name: newName.trim() });
+      }
       if (oldName && oldName !== newName.trim()) {
         try {
           await fetch(`${API_BASE}/api/objects/rename`, {
@@ -356,14 +448,19 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         } catch (_) {}
       }
     },
-    [items, updateItem]
+    [items, updateItem, updateNestedItem]
   );
 
   return {
     items,
     selectedIds,
     popupItemId,
+    currentPopupItem,
     popupContents,
+    viewingNestedId,
+    openNestedContents,
+    closeNestedView,
+    unnestToCanvas,
     selectionMode,
     selectedRowIndices,
     registerPopupOpen,
