@@ -1,6 +1,6 @@
 import React from "react";
 import { Stage, Layer, Rect, Image, Transformer } from "react-konva";
-import useImage from "react-konva/useImage";
+import useImage from "use-image";
 
 /**
  * 画像付きオブジェクト用（useImage をフックで使うため別コンポーネント）
@@ -227,6 +227,10 @@ export default function ObjectCanvasStage({
                 "top-right",
                 "bottom-left",
                 "bottom-right",
+                "middle-left",
+                "middle-right",
+                "top-center",
+                "bottom-center",
               ]}
               boundBoxFunc={(oldBox, newBox) => {
                 if (newBox.width < 20 || newBox.height < 20) return oldBox;
