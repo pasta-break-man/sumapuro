@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Stage, Layer, Rect, Text, Transformer } from "react-konva";
+import { Stage, Layer, Rect, Transformer } from "react-konva";
 
 export default function KonvaCanvas() {
   const [items, setItems] = useState([
@@ -90,16 +90,6 @@ function KonvaItem({ item, isSelected, onSelect, onChange }) {
             h: Math.max(30, node.height() * scaleY),
           });
         }}
-      />
-
-      <Text
-        x={item.x}
-        y={item.y - 22}
-        text={item.label}
-        fontSize={16}
-        fill="#e5e7eb"
-        onClick={onSelect}
-        onTap={onSelect}
       />
 
       {isSelected && (

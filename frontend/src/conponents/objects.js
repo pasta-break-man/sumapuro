@@ -33,7 +33,8 @@ export const OBJECT_TYPES = [
     width: 100,
     height: 50,
     fill: "#49eb34",
-    // imageUrl: "/images/bookshelf.png",
+    // 画像は public フォルダに置き、/ファイル名 で指定（絶対パス C:/ はブラウザでは使えません）
+    imageUrl: "/1503833.jpg",
   },
 ];
 
