@@ -1,8 +1,89 @@
 import React from "react";
-import { Stage, Layer, Rect, Text, Transformer } from "react-konva";
+import { Stage, Layer, Rect, Image, Transformer } from "react-konva";
+import useImage from "react-konva/useImage";
 
 /**
- * Konva キャンバス：オブジェクトの矩形・ラベル・Transformer
+ * 画像付きオブジェクト用（useImage をフックで使うため別コンポーネント）
+ */
+function ObjectImageShape({
+  item,
+  selectedIds,
+  shapeRefs,
+  startLongPressTimer,
+  clearLongPressTimer,
+  handleDragEnd,
+  toggleSelect,
+  openPopupFor,
+  moveSelectedBy,
+  resizeItem,
+  lastDragPosRef,
+}) {
+  const [image] = useImage(item.imageUrl);
+  if (!image) return null;
+  return (
+    <Image
+      ref={(node) => {
+        if (node) shapeRefs.current[item.id] = node;
+      }}
+      image={image}
+      x={item.x}
+      y={item.y}
+      width={item.width}
+      height={item.height}
+      stroke={selectedIds.includes(item.id) ? "#facc15" : undefined}
+      strokeWidth={selectedIds.includes(item.id) ? 3 : 0}
+      shadowBlur={selectedIds.includes(item.id) ? 8 : 0}
+      draggable
+      onMouseDown={() => startLongPressTimer(item.id)}
+      onTouchStart={() => startLongPressTimer(item.id)}
+      onMouseUp={clearLongPressTimer}
+      onMouseLeave={clearLongPressTimer}
+      onTouchEnd={clearLongPressTimer}
+      onDragStart={(e) => {
+        clearLongPressTimer();
+        lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+      }}
+      onDragMove={(e) => {
+        const last = lastDragPosRef.current;
+        if (!last) {
+          lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+          return;
+        }
+        const dx = e.target.x() - last.x;
+        const dy = e.target.y() - last.y;
+        if (dx || dy) {
+          moveSelectedBy(dx, dy);
+          lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+        }
+      }}
+      onDragEnd={(e) => {
+        lastDragPosRef.current = null;
+        handleDragEnd(item.id, e);
+      }}
+      onClick={() => toggleSelect(item.id)}
+      onTap={() => toggleSelect(item.id)}
+      onDblClick={() => openPopupFor(item.id)}
+      onDblTap={() => openPopupFor(item.id)}
+      onTransformEnd={(e) => {
+        const node = shapeRefs.current[item.id];
+        if (!node) return;
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        node.scaleX(1);
+        node.scaleY(1);
+        resizeItem(item.id, {
+          x: node.x(),
+          y: node.y(),
+          width: node.width() * scaleX,
+          height: node.height() * scaleY,
+        });
+      }}
+    />
+  );
+}
+
+/**
+ * Konva キャンバス：オブジェクトの矩形または画像・Transformer
  */
 export default function ObjectCanvasStage({
   stageWidth,
@@ -48,9 +129,25 @@ export default function ObjectCanvasStage({
         }}
       >
         <Layer>
-          {items.filter((item) => !item.parentId).map((item) => (
-            <React.Fragment key={item.id}>
+          {items.filter((item) => !item.parentId).map((item) =>
+            item.imageUrl ? (
+              <ObjectImageShape
+                key={item.id}
+                item={item}
+                selectedIds={selectedIds}
+                shapeRefs={shapeRefs}
+                startLongPressTimer={startLongPressTimer}
+                clearLongPressTimer={clearLongPressTimer}
+                handleDragEnd={handleDragEnd}
+                toggleSelect={toggleSelect}
+                openPopupFor={openPopupFor}
+                moveSelectedBy={moveSelectedBy}
+                resizeItem={resizeItem}
+                lastDragPosRef={lastDragPosRef}
+              />
+            ) : (
               <Rect
+                key={item.id}
                 ref={(node) => {
                   if (node) shapeRefs.current[item.id] = node;
                 }}
@@ -118,24 +215,8 @@ export default function ObjectCanvasStage({
                   });
                 }}
               />
-              <Text
-                x={item.x}
-                y={item.y - 20}
-                text={item.name ?? item.label}
-                fontSize={14}
-                fill="#e5e7eb"
-                onMouseDown={() => startLongPressTimer(item.id)}
-                onTouchStart={() => startLongPressTimer(item.id)}
-                onMouseUp={clearLongPressTimer}
-                onMouseLeave={clearLongPressTimer}
-                onTouchEnd={clearLongPressTimer}
-                onClick={() => toggleSelect(item.id)}
-                onTap={() => toggleSelect(item.id)}
-                onDblClick={() => openPopupFor(item.id)}
-                onDblTap={() => openPopupFor(item.id)}
-              />
-            </React.Fragment>
-          ))}
+            )
+          )}
 
           {selectedIds.length === 1 && (
             <Transformer
