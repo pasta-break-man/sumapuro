@@ -1,5 +1,6 @@
 // Canvas上に配置可能な「棚っぽい」オブジェクト定義をまとめたファイル
 // 必要に応じてここに種類を追加していく想定
+// imageUrl: オプション。指定するとキャンバス上でその画像で表示（URL または public フォルダからの相対パス）
 
 export const OBJECT_TYPES = [
   {
@@ -8,6 +9,7 @@ export const OBJECT_TYPES = [
     width: 120,
     height: 50,
     fill: "#4f46e5",
+    // imageUrl: "/images/shelf-small.png",
   },
   {
     id: "shelf-medium",
@@ -15,6 +17,7 @@ export const OBJECT_TYPES = [
     width: 180,
     height: 60,
     fill: "#16a34a",
+    // imageUrl: "/images/shelf-medium.png",
   },
   {
     id: "shelf-large",
@@ -22,13 +25,15 @@ export const OBJECT_TYPES = [
     width: 240,
     height: 70,
     fill: "#f97316",
+    // imageUrl: "/images/shelf-large.png",
   },
   {
-    id:"book-shelf",
-    label:"本棚",
+    id: "book-shelf",
+    label: "本棚",
     width: 100,
     height: 50,
-    fill: '#49eb34',
+    fill: "#49eb34",
+    // imageUrl: "/images/bookshelf.png",
   },
 ];
 

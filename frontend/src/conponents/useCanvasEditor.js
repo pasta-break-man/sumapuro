@@ -80,7 +80,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const LEFT_MARGIN = 48;
 
   const addObjectFromType = useCallback((type, position) => {
-    const { id: typeId, width, height, fill, label } = type;
+    const { id: typeId, width, height, fill, label, imageUrl: typeImageUrl } = type;
     const x =
       position != null && typeof position.x === "number"
         ? Math.max(0, Math.min(position.x, stageWidth - width))
@@ -111,6 +111,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           name: displayName,
           contents: [],
           parentId: undefined,
+          imageUrl: typeImageUrl ?? undefined,
         },
       ];
     });
@@ -256,6 +257,18 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const closeNestedView = useCallback(() => {
     setViewingNestedId(null);
   }, []);
+
+  const setObjectImage = useCallback(
+    (dataUrl) => {
+      if (!currentPopupItem) return;
+      if (currentPopupItem.parentId) {
+        updateNestedItem(popupItemId, currentPopupItem.id, { imageUrl: dataUrl });
+      } else {
+        updateItem(currentPopupItem.id, { imageUrl: dataUrl });
+      }
+    },
+    [currentPopupItem, popupItemId, updateItem, updateNestedItem]
+  );
 
   // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存（親／入れ子どちらでも可）
   const confirmRegisterAdd = useCallback(async () => {
