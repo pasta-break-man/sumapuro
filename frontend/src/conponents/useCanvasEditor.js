@@ -62,6 +62,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         height,
         fill,
         label,
+        name: label, // テーブル名・表示名（名前変更で更新）
         contents: [],
       },
     ]);
@@ -112,8 +113,10 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setRegisterDraft((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // 登録ポップアップで「登録」: 1行追加して閉じる（contentsActions 使用）
-  const confirmRegisterAdd = useCallback(() => {
+  const API_BASE = "http://localhost:5000";
+
+  // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存
+  const confirmRegisterAdd = useCallback(async () => {
     if (!popupItemId) return;
     const item = items.find((x) => x.id === popupItemId);
     if (!item) return;
@@ -121,6 +124,19 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     const nextContents = addContentRow(currentContents, registerDraft);
     updateItem(popupItemId, { contents: nextContents });
     closeRegisterPopup();
+
+    try {
+      await fetch(`${API_BASE}/api/contents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          object_name: item.name ?? item.label ?? "オブジェクト",
+          name: registerDraft.name ?? "",
+          category: registerDraft.category ?? "",
+          count: registerDraft.count ?? 0,
+        }),
+      });
+    } catch (_) {}
   }, [popupItemId, items, registerDraft, updateItem, closeRegisterPopup]);
 
   // マイナス押下: 選択モードに入る
@@ -189,17 +205,50 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setDeleteConfirmItemId(null);
   }, []);
 
-  // 削除実行
-  const confirmDelete = useCallback(() => {
+  // 削除実行（DB のテーブルも削除）
+  const confirmDelete = useCallback(async () => {
     if (!deleteConfirmItemId) return;
-    setItems((prev) => prev.filter((item) => item.id !== deleteConfirmItemId));
+    const item = items.find((i) => i.id === deleteConfirmItemId);
+    const objectName = item?.name ?? item?.label ?? "";
+    setItems((prev) => prev.filter((i) => i.id !== deleteConfirmItemId));
     setSelectedIds((prev) => prev.filter((id) => id !== deleteConfirmItemId));
     setDeleteConfirmItemId(null);
     if (popupItemId === deleteConfirmItemId) {
       setPopupItemId(null);
       setRegisterPopupOpen(false);
     }
-  }, [deleteConfirmItemId, popupItemId]);
+    if (objectName) {
+      try {
+        await fetch(
+          `${API_BASE}/api/objects/${encodeURIComponent(objectName)}`,
+          { method: "DELETE" }
+        );
+      } catch (_) {}
+    }
+  }, [deleteConfirmItemId, popupItemId, items]);
+
+  // 名前変更（画面上の名前＋DB のテーブル名を変更）
+  const renameObject = useCallback(
+    async (id, newName) => {
+      const item = items.find((x) => x.id === id);
+      if (!item || !newName.trim()) return;
+      const oldName = item.name ?? item.label ?? "";
+      updateItem(id, { name: newName.trim() });
+      if (oldName && oldName !== newName.trim()) {
+        try {
+          await fetch(`${API_BASE}/api/objects/rename`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              old_name: oldName,
+              new_name: newName.trim(),
+            }),
+          });
+        } catch (_) {}
+      }
+    },
+    [items, updateItem]
+  );
 
   return {
     items,
@@ -230,5 +279,6 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     openDeleteConfirm,
     closeDeleteConfirm,
     confirmDelete,
+    renameObject,
   };
 };

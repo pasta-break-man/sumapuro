@@ -39,6 +39,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     openDeleteConfirm,
     closeDeleteConfirm,
     confirmDelete,
+    renameObject,
   } = useCanvasEditor({ stageWidth, stageHeight });
 
   const LONG_PRESS_MS = 1000;
@@ -280,6 +281,28 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
               boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
             }}
           >
+            <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const item = items.find((i) => i.id === popupItemId);
+                  const current = item?.name ?? item?.label ?? "オブジェクト";
+                  const newName = window.prompt("オブジェクト名", current);
+                  if (newName != null && newName.trim()) renameObject(popupItemId, newName.trim());
+                }}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #4b5563",
+                  background: "#111827",
+                  color: "#e5e7eb",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                名前変更
+              </button>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -289,8 +312,8 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
               }}
             >
               <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-              {items.find((i) => i.id === popupItemId)?.label ?? "オブジェクト"}の中身
-            </h2>
+                {items.find((i) => i.id === popupItemId)?.name ?? items.find((i) => i.id === popupItemId)?.label ?? "オブジェクト"}の中身
+              </h2>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
                   type="button"

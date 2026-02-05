@@ -1,14 +1,37 @@
+import re
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from sqlalchemy import text
 
-from database import init_db, get_db
-from backdatas import Item
+from database import engine, init_db
 
 app = Flask(__name__)
 CORS(app)
 
-# 起動時にテーブル作成
+# 既存の items テーブル用（init_db で作成）
 init_db()
+
+
+def sanitize_table_name(name):
+    """テーブル名として使うために安全な文字のみ残す（SQL インジェクション対策）"""
+    if not name or not isinstance(name, str):
+        return "object_unnamed"
+    # 英数字・日本語・アンダースコアのみ許可、他は _ に
+    s = re.sub(r"[^a-zA-Z0-9_\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff]", "_", name.strip())
+    return s[:80] if s else "object_unnamed"
+
+
+def ensure_object_table(table_name):
+    """オブジェクト名のテーブルがなければ作成"""
+    safe = sanitize_table_name(table_name)
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                f'CREATE TABLE IF NOT EXISTS "{safe}" '
+                "(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, category TEXT, count INTEGER)"
+            )
+        )
+        conn.commit()
 
 
 @app.route("/api/data", methods=["GET"])
@@ -22,33 +45,64 @@ def get_data():
 
 @app.route("/api/contents", methods=["POST"])
 def add_content():
-    """オブジェクト中身を1行追加（フロントの「登録」で呼ぶ）"""
+    """オブジェクト中身を1行追加。テーブル名＝オブジェクト名。"""
     body = request.get_json()
-    if not body or "object_id" not in body:
-        return jsonify({"error": "object_id is required"}), 400
+    if not body or "object_name" not in body:
+        return jsonify({"error": "object_name is required"}), 400
 
-    object_id = body.get("object_id", "")
-    name = body.get("name", "")
+    object_name = body.get("object_name", "")
+    row_name = body.get("name", "")
     category = body.get("category", "")
     count = int(body.get("count", 0)) if body.get("count") is not None else 0
 
-    db = next(get_db())
-    try:
-        row = Item(
-            storage_id=object_id,
-            name=name,
-            category=category,
-            count=count,
+    table_name = sanitize_table_name(object_name)
+    ensure_object_table(object_name)
+
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                f'INSERT INTO "{table_name}" (name, category, count) VALUES (:name, :category, :count)'
+            ),
+            {"name": row_name, "category": category, "count": count},
         )
-        db.add(row)
-        db.commit()
-        db.refresh(row)  # commit 後に id を取得
-        return jsonify({"id": row.id, "status": "created"}), 201
-    except Exception as e:
-        db.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        db.close()
+        conn.commit()
+        row = conn.execute(text("SELECT last_insert_rowid()")).scalar()
+
+    return jsonify({"id": row, "status": "created"}), 201
+
+
+@app.route("/api/objects/rename", methods=["POST"])
+def rename_object_table():
+    """オブジェクト（テーブル）の名前変更"""
+    body = request.get_json()
+    if not body or "old_name" not in body or "new_name" not in body:
+        return jsonify({"error": "old_name and new_name are required"}), 400
+
+    old_name = sanitize_table_name(body["old_name"])
+    new_name = sanitize_table_name(body["new_name"])
+    if old_name == new_name:
+        return jsonify({"status": "ok"}), 200
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:n"),
+            {"n": old_name},
+        ).first()
+        if not row:
+            return jsonify({"status": "ok"}), 200
+        conn.execute(text(f'ALTER TABLE "{old_name}" RENAME TO "{new_name}"'))
+        conn.commit()
+    return jsonify({"status": "renamed"}), 200
+
+
+@app.route("/api/objects/<path:object_name>", methods=["DELETE"])
+def drop_object_table(object_name):
+    """オブジェクト削除時にそのテーブルを削除"""
+    table_name = sanitize_table_name(object_name)
+    with engine.connect() as conn:
+        conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        conn.commit()
+    return jsonify({"status": "deleted"}), 200
 
 
 if __name__ == "__main__":
