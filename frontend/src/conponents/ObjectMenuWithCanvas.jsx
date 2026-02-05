@@ -136,6 +136,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         stageContainerRef={stageContainerRef}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+
         clearSelection={clearSelection}
         startLongPressTimer={startLongPressTimer}
         clearLongPressTimer={clearLongPressTimer}
@@ -145,6 +146,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         moveSelectedBy={moveSelectedBy}
         resizeItem={resizeItem}
       />
+ main
 
       {popupItemId && !registerPopupOpen && (
         <ContentsViewPopup
