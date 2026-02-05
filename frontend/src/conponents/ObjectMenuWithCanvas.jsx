@@ -36,7 +36,29 @@ const ObjectMenuWithCanvas = () => {
     deleteSelectedRows,
     resizeItem,
     moveSelectedBy,
+    deleteConfirmItemId,
+    openDeleteConfirm,
+    closeDeleteConfirm,
+    confirmDelete,
   } = useCanvasEditor({ stageWidth, stageHeight });
+
+  const LONG_PRESS_MS = 1000;
+  const longPressTimerRef = useRef(null);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current != null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPressTimer = (itemId) => {
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      openDeleteConfirm(itemId);
+    }, LONG_PRESS_MS);
+  };
 
   const CATEGORY_OPTIONS = [
     "",
@@ -150,7 +172,13 @@ const ObjectMenuWithCanvas = () => {
                   shadowBlur={selectedIds.includes(item.id) ? 8 : 0}
                   cornerRadius={10}
                   draggable
+                  onMouseDown={() => startLongPressTimer(item.id)}
+                  onTouchStart={() => startLongPressTimer(item.id)}
+                  onMouseUp={clearLongPressTimer}
+                  onMouseLeave={clearLongPressTimer}
+                  onTouchEnd={clearLongPressTimer}
                   onDragStart={(e) => {
+                    clearLongPressTimer();
                     lastDragPosRef.current = {
                       x: e.target.x(),
                       y: e.target.y(),
@@ -207,6 +235,11 @@ const ObjectMenuWithCanvas = () => {
                   text={item.name ?? item.label}
                   fontSize={14}
                   fill="#e5e7eb"
+                  onMouseDown={() => startLongPressTimer(item.id)}
+                  onTouchStart={() => startLongPressTimer(item.id)}
+                  onMouseUp={clearLongPressTimer}
+                  onMouseLeave={clearLongPressTimer}
+                  onTouchEnd={clearLongPressTimer}
                   onClick={() => toggleSelect(item.id)}
                   onTap={() => toggleSelect(item.id)}
                   onDblClick={() => openPopupFor(item.id)}
@@ -270,8 +303,8 @@ const ObjectMenuWithCanvas = () => {
               }}
             >
               <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-                オブジェクトの中身
-              </h2>
+              {items.find((i) => i.id === popupItemId)?.label ?? "オブジェクト"}の中身
+            </h2>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
                   type="button"
@@ -284,11 +317,11 @@ const ObjectMenuWithCanvas = () => {
                     background: "#111827",
                     color: "#e5e7eb",
                     fontSize: 18,
-                    lineHeight: "24px",
+                    lineHeight: "10px",
                     cursor: "pointer",
                   }}
                 >
-                  −
+                  -
                 </button>
                 <button
                   type="button"
@@ -301,7 +334,7 @@ const ObjectMenuWithCanvas = () => {
                     background: "#111827",
                     color: "#e5e7eb",
                     fontSize: 18,
-                    lineHeight: "24px",
+                    lineHeight: "10px",
                     cursor: "pointer",
                   }}
                 >
@@ -574,6 +607,72 @@ const ObjectMenuWithCanvas = () => {
                 }}
               >
                 登録
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* オブジェクト削除確認（1秒長押しで表示） */}
+      {deleteConfirmItemId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 52,
+          }}
+        >
+          <div
+            style={{
+              width: 280,
+              padding: 20,
+              borderRadius: 8,
+              background: "#020617",
+              color: "#e5e7eb",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
+            }}
+          >
+            <p style={{ fontSize: 14, marginBottom: 16 }}>
+              このオブジェクトを削除しますか？
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #4b5563",
+                  background: "#020617",
+                  color: "#e5e7eb",
+                  cursor: "pointer",
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #dc2626",
+                  background: "#991b1b",
+                  color: "#e5e7eb",
+                  cursor: "pointer",
+                }}
+              >
+                削除
               </button>
             </div>
           </div>

@@ -23,5 +23,12 @@ export const OBJECT_TYPES = [
     height: 70,
     fill: "#f97316",
   },
+  {
+    id:"book-shelf",
+    label:"本棚",
+    width: 100,
+    height: 50,
+    fill: '#49eb34',
+  },
 ];
 

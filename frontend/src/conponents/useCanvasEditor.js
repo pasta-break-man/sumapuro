@@ -14,11 +14,15 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
 
   // 閲覧ポップアップ: 選択モード（マイナス押下時）
   const [selectionMode, setSelectionMode] = useState(false);
+
   const [selectedRowIndices, setSelectedRowIndices] = useState([]);
 
   // 登録用ポップアップ（＋押下で開く）
   const [registerPopupOpen, setRegisterPopupOpen] = useState(false);
   const [registerDraft, setRegisterDraft] = useState({ ...DEFAULT_CONTENT_ROW });
+
+  // オブジェクト削除確認ポップアップ（1秒長押しで表示）
+  const [deleteConfirmItemId, setDeleteConfirmItemId] = useState(null);
 
   const updateItem = useCallback((id, patchOrFn) => {
     setItems((prev) =>
@@ -166,6 +170,27 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     return items.find((x) => x.id === popupItemId)?.contents ?? [];
   }, [popupItemId, items]);
 
+  // 長押しで削除確認を開く
+  const openDeleteConfirm = useCallback((id) => {
+    setDeleteConfirmItemId(id);
+  }, []);
+
+  const closeDeleteConfirm = useCallback(() => {
+    setDeleteConfirmItemId(null);
+  }, []);
+
+  // 削除実行
+  const confirmDelete = useCallback(() => {
+    if (!deleteConfirmItemId) return;
+    setItems((prev) => prev.filter((item) => item.id !== deleteConfirmItemId));
+    setSelectedIds((prev) => prev.filter((id) => id !== deleteConfirmItemId));
+    setDeleteConfirmItemId(null);
+    if (popupItemId === deleteConfirmItemId) {
+      setPopupItemId(null);
+      setRegisterPopupOpen(false);
+    }
+  }, [deleteConfirmItemId, popupItemId]);
+
   return {
     items,
     selectedIds,
@@ -191,5 +216,9 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     deleteSelectedRows,
     resizeItem,
     moveSelectedBy,
+    deleteConfirmItemId,
+    openDeleteConfirm,
+    closeDeleteConfirm,
+    confirmDelete,
   };
 };
