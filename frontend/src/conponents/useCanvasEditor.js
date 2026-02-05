@@ -51,21 +51,30 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
       position != null && typeof position.y === "number"
         ? Math.max(0, Math.min(position.y, stageHeight - height))
         : (stageHeight - height) / 2;
-    setItems((prev) => [
-      ...prev,
-      {
-        id: `${typeId}-${Date.now()}`,
-        typeId,
-        x,
-        y,
-        width,
-        height,
-        fill,
-        label,
-        name: label, // テーブル名・表示名（名前変更で更新）
-        contents: [],
-      },
-    ]);
+    setItems((prev) => {
+      const existingNames = prev.map((i) => i.name ?? i.label ?? "");
+      let displayName = label;
+      if (existingNames.includes(label)) {
+        let n = 2;
+        while (existingNames.includes(label + n)) n += 1;
+        displayName = label + n;
+      }
+      return [
+        ...prev,
+        {
+          id: `${typeId}-${Date.now()}`,
+          typeId,
+          x,
+          y,
+          width,
+          height,
+          fill,
+          label,
+          name: displayName,
+          contents: [],
+        },
+      ];
+    });
   }, [stageWidth, stageHeight]);
 
   const handleDragEnd = useCallback((id, e) => {
@@ -125,12 +134,13 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     updateItem(popupItemId, { contents: nextContents });
     closeRegisterPopup();
 
+    const objectName = item.name ?? item.label ?? "オブジェクト";
     try {
       await fetch(`${API_BASE}/api/contents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          object_name: item.name ?? item.label ?? "オブジェクト",
+          object_name: objectName,
           name: registerDraft.name ?? "",
           category: registerDraft.category ?? "",
           count: registerDraft.count ?? 0,
@@ -219,11 +229,12 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setDeleteConfirmItemId(null);
   }, []);
 
-  // 削除実行（DB のテーブルも削除）
+  // 削除実行（画面上から削除し、対応する DB テーブル（オブジェクト名）も削除）
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirmItemId) return;
     const item = items.find((i) => i.id === deleteConfirmItemId);
-    const objectName = item?.name ?? item?.label ?? "";
+    const objectNameToDrop = item?.name ?? item?.label ?? null;
+
     setItems((prev) => prev.filter((i) => i.id !== deleteConfirmItemId));
     setSelectedIds((prev) => prev.filter((id) => id !== deleteConfirmItemId));
     setDeleteConfirmItemId(null);
@@ -231,17 +242,18 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
       setPopupItemId(null);
       setRegisterPopupOpen(false);
     }
-    if (objectName) {
+
+    if (objectNameToDrop) {
       try {
         await fetch(
-          `${API_BASE}/api/objects/${encodeURIComponent(objectName)}`,
+          `${API_BASE}/api/objects/${encodeURIComponent(objectNameToDrop)}`,
           { method: "DELETE" }
         );
       } catch (_) {}
     }
   }, [deleteConfirmItemId, popupItemId, items]);
 
-  // 名前変更（画面上の名前＋DB のテーブル名を変更）
+  // 名前変更（表示名更新 ＋ DB のテーブル名も変更）
   const renameObject = useCallback(
     async (id, newName) => {
       const item = items.find((x) => x.id === id);
