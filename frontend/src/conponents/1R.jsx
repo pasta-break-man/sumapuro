@@ -1,6 +1,7 @@
 import React from "react";
 import { Stage, Layer, Rect } from "react-konva";
 
+
 export default function RoomCanvas() {
   const ROOM = {
     width: 600,
@@ -17,7 +18,7 @@ export default function RoomCanvas() {
       <Stage
         width={ROOM.width}
         height={ROOM.height}
-        style={{ border: "1px solid #444", background: "#f3f4f6" }}
+        style={{ border: "1px solid #d34040", background: "#f3f4f6" }}
       >
         <Layer>
           {/* 上 */}
