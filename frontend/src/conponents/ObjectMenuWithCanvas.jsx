@@ -253,6 +253,10 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
                   "top-right",
                   "bottom-left",
                   "bottom-right",
+                  "middle-left",
+                  "middle-right",
+                  "top-center",
+                  "bottom-center",
                 ]}
                 boundBoxFunc={(oldBox, newBox) => {
                   // 極端に小さくならないように制限
