@@ -21,17 +21,16 @@ def sanitize_table_name(name):
     return s[:80] if s else "object_unnamed"
 
 
-def ensure_object_table(table_name):
-    """オブジェクト名のテーブルがなければ作成"""
-    safe = sanitize_table_name(table_name)
-    with engine.connect() as conn:
+def ensure_object_table(object_name):
+    """オブジェクト名（表示名）をテーブル名として使う。テーブルがなければ作成"""
+    table_name = sanitize_table_name(object_name)
+    with engine.begin() as conn:
         conn.execute(
             text(
-                f'CREATE TABLE IF NOT EXISTS "{safe}" '
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" '
                 "(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, category TEXT, count INTEGER)"
             )
         )
-        conn.commit()
 
 
 @app.route("/api/data", methods=["GET"])
@@ -45,7 +44,7 @@ def get_data():
 
 @app.route("/api/contents", methods=["POST"])
 def add_content():
-    """オブジェクト中身を1行追加。テーブル名＝オブジェクト名。"""
+    """オブジェクト中身を1行追加。テーブル名＝オブジェクトの表示名。"""
     body = request.get_json()
     if not body or "object_name" not in body:
         return jsonify({"error": "object_name is required"}), 400
@@ -73,7 +72,7 @@ def add_content():
 
 @app.route("/api/objects/rename", methods=["POST"])
 def rename_object_table():
-    """オブジェクト（テーブル）の名前変更"""
+    """オブジェクト名変更時にテーブル名を変更"""
     body = request.get_json()
     if not body or "old_name" not in body or "new_name" not in body:
         return jsonify({"error": "old_name and new_name are required"}), 400
@@ -97,11 +96,12 @@ def rename_object_table():
 
 @app.route("/api/objects/<path:object_name>", methods=["DELETE"])
 def drop_object_table(object_name):
-    """オブジェクト削除時にそのテーブルを削除"""
-    table_name = sanitize_table_name(object_name)
-    with engine.connect() as conn:
+    """オブジェクト削除時にその表示名のテーブルを削除"""
+    from urllib.parse import unquote
+    decoded = unquote(object_name)
+    table_name = sanitize_table_name(decoded)
+    with engine.begin() as conn:
         conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
-        conn.commit()
     return jsonify({"status": "deleted"}), 200
 
 
