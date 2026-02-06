@@ -220,6 +220,51 @@ def delete_contents():
     return jsonify({"status": "deleted"}), 200
 
 
+@app.route("/api/contents/search", methods=["POST"])
+def search_contents():
+    """名前・分類で中身を検索し、ヒットしたオブジェクトの table_name と parent_table_name を返す（入れ子の親も含める）"""
+    body = request.get_json() or {}
+    search_name = (body.get("name") or "").strip()
+    search_category = (body.get("category") or "").strip()
+    if not search_name and not search_category:
+        return jsonify({"matches": []}), 200
+
+    with engine.connect() as conn:
+        tables = conn.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        ).fetchall()
+        results = []
+        for (table_name,) in tables:
+            if table_name == "items":
+                continue
+            # テーブル名は type_id_N 形式のみ（アンダースコア＋数字で終わる）
+            if "_" not in table_name or not table_name.split("_")[-1].isdigit():
+                continue
+            try:
+                # name, category で LIKE 検索（空の場合は全件マッチ扱い）
+                name_pattern = f"%{search_name}%" if search_name else "%"
+                category_pattern = f"%{search_category}%" if search_category else "%"
+                rows = conn.execute(
+                    text(
+                        f'SELECT DISTINCT parent_table_name FROM "{table_name}" '
+                        "WHERE name LIKE :name_pattern AND category LIKE :category_pattern"
+                    ),
+                    {"name_pattern": name_pattern, "category_pattern": category_pattern},
+                ).fetchall()
+                for (parent_table_name,) in rows:
+                    results.append(
+                        {
+                            "table_name": table_name,
+                            "parent_table_name": parent_table_name,
+                        }
+                    )
+            except Exception:
+                continue
+    return jsonify({"matches": results}), 200
+
+
 @app.route("/api/db/reset", methods=["POST"])
 def reset_db():
     """オブジェクト用テーブルをすべて削除し、キャンバス初期化に合わせる"""

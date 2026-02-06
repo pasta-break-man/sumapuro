@@ -1,6 +1,6 @@
 import React from "react";
 
-const CATEGORY_OPTIONS = [
+export const CATEGORY_OPTIONS = [
   "",
   "薬",
   "本",

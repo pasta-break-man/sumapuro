@@ -10,7 +10,7 @@ import NestConfirmModal from "./NestConfirmModal";
  * キャンバス＋ポップアップのみ。メニュー（オブジェクト追加UI）は object.jsx の右パネルに委譲。
  * ref で addObjectFromType を公開し、object.jsx のボタンから呼ぶ。
  */
-const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
+const ObjectMenuWithCanvas = React.forwardRef(({ highlightTableNames = [] }, ref) => {
   const stageWidth = 900;
   const stageHeight = 520;
 
@@ -140,6 +140,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         stageHeight={stageHeight}
         items={items}
         selectedIds={selectedIds}
+        highlightTableNames={highlightTableNames}
         trRef={trRef}
         shapeRefs={shapeRefs}
         lastDragPosRef={lastDragPosRef}
@@ -165,6 +166,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
           currentPopupItem={currentPopupItem}
           viewingNestedId={viewingNestedId}
           nestedItems={items.find((i) => i.id === popupItemId)?.nestedItems ?? []}
+          highlightTableNames={highlightTableNames}
           onOpenNestedContents={openNestedContents}
           onCloseNestedView={closeNestedView}
           onUnnest={unnestToCanvas}

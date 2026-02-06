@@ -5,9 +5,12 @@ import useImage from "use-image";
 /**
  * 画像付きオブジェクト用（useImage をフックで使うため別コンポーネント）
  */
+const SEARCH_HIGHLIGHT_COLOR = "#ffff00";
+
 function ObjectImageShape({
   item,
   selectedIds,
+  highlightTableNames,
   shapeRefs,
   startLongPressTimer,
   clearLongPressTimer,
@@ -20,6 +23,11 @@ function ObjectImageShape({
 }) {
   const [image] = useImage(item.imageUrl);
   if (!image) return null;
+  const isSelected = selectedIds.includes(item.id);
+  const isSearchHighlight = highlightTableNames.includes(item.tableName);
+  const strokeColor = isSelected ? "#facc15" : isSearchHighlight ? SEARCH_HIGHLIGHT_COLOR : undefined;
+  const strokeWidth = isSelected || isSearchHighlight ? 5 : 0;
+  const shadowBlur = isSelected || isSearchHighlight ? 8 : 0;
   return (
     <Image
       ref={(node) => {
@@ -30,9 +38,9 @@ function ObjectImageShape({
       y={item.y}
       width={item.width}
       height={item.height}
-      stroke={selectedIds.includes(item.id) ? "#facc15" : undefined}
-      strokeWidth={selectedIds.includes(item.id) ? 3 : 0}
-      shadowBlur={selectedIds.includes(item.id) ? 8 : 0}
+      stroke={strokeColor}
+      strokeWidth={strokeWidth}
+      shadowBlur={shadowBlur}
       draggable
       onMouseDown={() => startLongPressTimer(item.id)}
       onTouchStart={() => startLongPressTimer(item.id)}
@@ -90,6 +98,7 @@ export default function ObjectCanvasStage({
   stageHeight,
   items,
   selectedIds,
+  highlightTableNames = [],
   trRef,
   shapeRefs,
   lastDragPosRef,
@@ -135,6 +144,7 @@ export default function ObjectCanvasStage({
                 key={item.id}
                 item={item}
                 selectedIds={selectedIds}
+                highlightTableNames={highlightTableNames}
                 shapeRefs={shapeRefs}
                 startLongPressTimer={startLongPressTimer}
                 clearLongPressTimer={clearLongPressTimer}
@@ -156,9 +166,23 @@ export default function ObjectCanvasStage({
                 width={item.width}
                 height={item.height}
                 fill={item.fill}
-                stroke={selectedIds.includes(item.id) ? "#facc15" : undefined}
-                strokeWidth={selectedIds.includes(item.id) ? 3 : 0}
-                shadowBlur={selectedIds.includes(item.id) ? 8 : 0}
+                stroke={
+                  selectedIds.includes(item.id)
+                    ? "#facc15"
+                    : highlightTableNames.includes(item.tableName)
+                      ? SEARCH_HIGHLIGHT_COLOR
+                      : undefined
+                }
+                strokeWidth={
+                  selectedIds.includes(item.id) || highlightTableNames.includes(item.tableName)
+                    ? 5
+                    : 0
+                }
+                shadowBlur={
+                  selectedIds.includes(item.id) || highlightTableNames.includes(item.tableName)
+                    ? 8
+                    : 0
+                }
                 cornerRadius={10}
                 draggable
                 onMouseDown={() => startLongPressTimer(item.id)}
