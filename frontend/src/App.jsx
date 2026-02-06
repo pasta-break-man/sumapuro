@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./conponents/login";          // フォルダ名を実際に合わせる
+import { AuthProvider } from "./conponents/login";
 import ProtectedRoute from "./conponents/protectroute";
 import LoginPage from "./conponents/loginpege";
-import ObjectMenuWithCanvas from "./conponents/ObjectMenuWithCanvas";
 import CanvasPage from "./conponents/object";
 
 export default function App() {
@@ -15,7 +14,6 @@ export default function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <ObjectMenuWithCanvas />
                 <CanvasPage />
               </ProtectedRoute>
             }

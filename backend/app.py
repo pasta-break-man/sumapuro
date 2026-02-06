@@ -28,6 +28,13 @@ def sanitize_type_id(type_id):
     return s[:60] if s else "object"
 
 
+def escape_like(value):
+    """LIKE 句で % _ をリテラルとして検索するためにエスケープする（部分一致用）"""
+    if not value:
+        return value
+    return str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 # 中身テーブルのカラム: id, object_name, name, category, count, nest_type, parent_table_name
 CONTENT_TABLE_COLS = (
     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -243,13 +250,17 @@ def search_contents():
             if "_" not in table_name or not table_name.split("_")[-1].isdigit():
                 continue
             try:
-                # name, category で LIKE 検索（空の場合は全件マッチ扱い）
-                name_pattern = f"%{search_name}%" if search_name else "%"
-                category_pattern = f"%{search_category}%" if search_category else "%"
+                # 部分一致: name, category を LIKE %...% で検索（% _ はエスケープ）
+                name_pattern = (
+                    "%" + escape_like(search_name) + "%" if search_name else "%"
+                )
+                category_pattern = (
+                    "%" + escape_like(search_category) + "%" if search_category else "%"
+                )
                 rows = conn.execute(
                     text(
                         f'SELECT DISTINCT parent_table_name FROM "{table_name}" '
-                        "WHERE name LIKE :name_pattern AND category LIKE :category_pattern"
+                        "WHERE name LIKE :name_pattern ESCAPE '\\' AND category LIKE :category_pattern ESCAPE '\\'"
                     ),
                     {"name_pattern": name_pattern, "category_pattern": category_pattern},
                 ).fetchall()
