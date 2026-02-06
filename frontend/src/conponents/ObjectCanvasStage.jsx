@@ -4,6 +4,7 @@ import useImage from "use-image";
 
 /**
  * 画像付きオブジェクト用（useImage をフックで使うため別コンポーネント）
+ * AI使用．確認済み
  */
 const SEARCH_HIGHLIGHT_COLOR = "#ffff00";
 
@@ -92,6 +93,7 @@ function ObjectImageShape({
 
 /**
  * Konva キャンバス：オブジェクトの矩形または画像・Transformer
+ * AI使用．確認済み
  */
 export default function ObjectCanvasStage({
   stageWidth,
