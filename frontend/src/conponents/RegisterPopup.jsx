@@ -44,6 +44,7 @@ const INPUT_STYLE = {
 
 /**
  * 中身1行登録用ポップアップ（名前・分類）
+ * AI使用．確認済み
  */
 export default function RegisterPopup({
   registerDraft,
