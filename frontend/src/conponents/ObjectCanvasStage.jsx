@@ -21,57 +21,88 @@ function ObjectImageShape({
   resizeItem,
   lastDragPosRef,
 }) {
-  const [image] = useImage(item.imageUrl);
-  if (!image) return null;
+  const [image] = useImage(item.imageUrl || "");
   const isSelected = selectedIds.includes(item.id);
   const isSearchHighlight = highlightTableNames.includes(item.tableName);
   const strokeColor = isSelected ? "#facc15" : isSearchHighlight ? SEARCH_HIGHLIGHT_COLOR : undefined;
   const strokeWidth = isSelected || isSearchHighlight ? 5 : 0;
   const shadowBlur = isSelected || isSearchHighlight ? 8 : 0;
+  const commonProps = {
+    x: item.x,
+    y: item.y,
+    width: item.width,
+    height: item.height,
+    stroke: strokeColor,
+    strokeWidth,
+    shadowBlur,
+    draggable: true,
+    onMouseDown: () => startLongPressTimer(item.id),
+    onTouchStart: () => startLongPressTimer(item.id),
+    onMouseUp: clearLongPressTimer,
+    onMouseLeave: clearLongPressTimer,
+    onTouchEnd: clearLongPressTimer,
+    onDragStart: (e) => {
+      clearLongPressTimer();
+      lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+    },
+    onDragMove: (e) => {
+      const last = lastDragPosRef.current;
+      if (!last) {
+        lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+        return;
+      }
+      const dx = e.target.x() - last.x;
+      const dy = e.target.y() - last.y;
+      if (dx || dy) {
+        moveSelectedBy(dx, dy);
+        lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
+      }
+    },
+    onDragEnd: (e) => {
+      lastDragPosRef.current = null;
+      handleDragEnd(item.id, e);
+    },
+    onClick: () => toggleSelect(item.id),
+    onTap: () => toggleSelect(item.id),
+    onDblClick: () => openPopupFor(item.id),
+    onDblTap: () => openPopupFor(item.id),
+  };
+
+  // 画像がまだ読み込めていない／失敗した場合は矩形で表示（オブジェクトが消えて見えないのを防ぐ）
+  if (!image) {
+    return (
+      <Rect
+        ref={(node) => {
+          if (node) shapeRefs.current[item.id] = node;
+        }}
+        {...commonProps}
+        fill={item.fill || "#6b7280"}
+        cornerRadius={10}
+        onTransformEnd={(e) => {
+          const node = shapeRefs.current[item.id];
+          if (!node) return;
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+          node.scaleX(1);
+          node.scaleY(1);
+          resizeItem(item.id, {
+            x: node.x(),
+            y: node.y(),
+            width: node.width() * scaleX,
+            height: node.height() * scaleY,
+          });
+        }}
+      />
+    );
+  }
+
   return (
     <Image
       ref={(node) => {
         if (node) shapeRefs.current[item.id] = node;
       }}
       image={image}
-      x={item.x}
-      y={item.y}
-      width={item.width}
-      height={item.height}
-      stroke={strokeColor}
-      strokeWidth={strokeWidth}
-      shadowBlur={shadowBlur}
-      draggable
-      onMouseDown={() => startLongPressTimer(item.id)}
-      onTouchStart={() => startLongPressTimer(item.id)}
-      onMouseUp={clearLongPressTimer}
-      onMouseLeave={clearLongPressTimer}
-      onTouchEnd={clearLongPressTimer}
-      onDragStart={(e) => {
-        clearLongPressTimer();
-        lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
-      }}
-      onDragMove={(e) => {
-        const last = lastDragPosRef.current;
-        if (!last) {
-          lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
-          return;
-        }
-        const dx = e.target.x() - last.x;
-        const dy = e.target.y() - last.y;
-        if (dx || dy) {
-          moveSelectedBy(dx, dy);
-          lastDragPosRef.current = { x: e.target.x(), y: e.target.y() };
-        }
-      }}
-      onDragEnd={(e) => {
-        lastDragPosRef.current = null;
-        handleDragEnd(item.id, e);
-      }}
-      onClick={() => toggleSelect(item.id)}
-      onTap={() => toggleSelect(item.id)}
-      onDblClick={() => openPopupFor(item.id)}
-      onDblTap={() => openPopupFor(item.id)}
+      {...commonProps}
       onTransformEnd={(e) => {
         const node = shapeRefs.current[item.id];
         if (!node) return;

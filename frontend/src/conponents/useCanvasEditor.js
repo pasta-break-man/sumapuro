@@ -29,13 +29,21 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
 
   itemsRef.current = items;
 
-  // マウント時に保存済みキャンバス状態を復元
+  // マウント時に保存済みキャンバス状態を復元（要ログイン・Cookie 送信）
   useEffect(() => {
     let cancelled = false;
     fetch(`${API_BASE}/api/canvas/state`, { credentials: "include" })
-      .then((res) => res.json())
+      .then((res) => {
+        if (cancelled) return undefined;
+        if (!res.ok) {
+          loadedFromServerRef.current = true;
+          return undefined;
+        }
+        return res.json();
+      })
       .then((data) => {
         if (cancelled) return;
+        if (data == null) return;
         const state = data?.state;
         if (Array.isArray(state) && state.length > 0) {
           setItems(state);
