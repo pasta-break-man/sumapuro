@@ -321,8 +321,8 @@ export default function ContentsViewPopup({
                 style={{
                   display: "grid",
                   gridTemplateColumns: selectionMode
-                    ? "24px 1fr 1fr 0.8fr"
-                    : "1fr 1fr 0.8fr",
+                    ? "24px 1fr 1fr"
+                    : "1fr 1fr",
                   gap: 8,
                   alignItems: "center",
                   padding: "6px 4px",
@@ -358,7 +358,6 @@ export default function ContentsViewPopup({
                 )}
                 <span style={{ fontSize: 13 }}>{row.name || "—"}</span>
                 <span style={{ fontSize: 13 }}>{row.category || "—"}</span>
-                <span style={{ fontSize: 13 }}>{row.count ?? "—"}</span>
               </div>
             ))
           )}

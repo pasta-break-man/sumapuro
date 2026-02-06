@@ -36,5 +36,13 @@ export const OBJECT_TYPES = [
     fill: "#f97316",
     imageUrl: "/クローゼット.png",
   },
+  {
+    id: "bed",
+    label: "ベッド",
+    width: 300,
+    height: 100,
+    fill: "#f97316",
+    imageUrl: "/ベッド.png",
+  }
 ];
 

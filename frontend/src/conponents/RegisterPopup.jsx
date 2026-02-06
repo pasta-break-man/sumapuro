@@ -43,7 +43,7 @@ const INPUT_STYLE = {
 };
 
 /**
- * 中身1行登録用ポップアップ（名前・分類・数）
+ * 中身1行登録用ポップアップ（名前・分類）
  */
 export default function RegisterPopup({
   registerDraft,
@@ -81,15 +81,6 @@ export default function RegisterPopup({
                 </option>
               ))}
             </select>
-          </label>
-          <label style={{ fontSize: 13 }}>
-            数
-            <input
-              type="number"
-              value={registerDraft.count}
-              onChange={(e) => onDraftChange({ count: e.target.value })}
-              style={INPUT_STYLE}
-            />
           </label>
         </div>
         <div
