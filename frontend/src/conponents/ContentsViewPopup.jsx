@@ -222,12 +222,12 @@ export default function ContentsViewPopup({
               fontSize: 13,
             }}
           >
-            <div style={{ color: "#94a3b8", marginBottom: 4 }}>
-              入っているオブジェクト（ダブルクリックで中身表示・ドラッグでキャンバスに戻す）
+            <div style={{ color: "#94a3b8", marginBottom: 8 }}>
+              入っているオブジェクト（図または名前をダブルクリックで中身表示・ドラッグでキャンバスに戻す）
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               {nestedItems.map((n) => (
-                <span
+                <div
                   key={n.id}
                   draggable
                   onDragStart={(e) => {
@@ -240,17 +240,71 @@ export default function ContentsViewPopup({
                     );
                     e.dataTransfer.effectAllowed = "move";
                   }}
-                  onDoubleClick={() => onOpenNestedContents?.(n.id)}
                   style={{
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    background: "#1e293b",
-                    color: "#e5e7eb",
+                    width: 72,
                     cursor: "grab",
+                    flexShrink: 0,
                   }}
                 >
-                  {n.name ?? n.label ?? "オブジェクト"}
-                </span>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onDoubleClick={() => onOpenNestedContents?.(n.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenNestedContents?.(n.id);
+                      }
+                    }}
+                    style={{
+                      width: 72,
+                      height: 56,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      background: n.fill ?? "#1e293b",
+                      border: "1px solid #334155",
+                      marginBottom: 4,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {n.imageUrl ? (
+                      <img
+                        src={n.imageUrl}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onDoubleClick={() => onOpenNestedContents?.(n.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenNestedContents?.(n.id);
+                      }
+                    }}
+                    style={{
+                      fontSize: 12,
+                      color: "#e5e7eb",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      wordBreak: "break-all",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {n.name ?? n.label ?? "オブジェクト"}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

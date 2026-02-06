@@ -289,41 +289,47 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   );
 
   // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存（親／入れ子どちらでも可）
+  // 対象オブジェクトは popupItemId / viewingNestedId から毎回取得（固定値・古い参照を使わない）
   const confirmRegisterAdd = useCallback(
     async () => {
-      if (!popupItemId || !currentPopupItem) return;
-      let tableName = currentPopupItem.tableName;
-      // tableName がないオブジェクト（旧データ等）は登録時にテーブルを発行して付与する
-      if (!tableName && currentPopupItem.typeId) {
+      if (!popupItemId) return;
+      const parent = items.find((i) => i.id === popupItemId);
+      if (!parent) return;
+      const item = viewingNestedId
+        ? parent.nestedItems?.find((n) => n.id === viewingNestedId)
+        : parent;
+      if (!item) return;
+
+      let tableName = item.tableName;
+      if (!tableName && item.typeId) {
         try {
           const res = await fetch(`${API_BASE}/api/objects/next-table-name`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type_id: currentPopupItem.typeId }),
+            body: JSON.stringify({ type_id: item.typeId }),
           });
           const data = await res.json();
           tableName = data?.table_name ?? null;
         } catch (_) {}
       }
 
-      const currentContents = currentPopupItem.contents ?? [];
+      const currentContents = item.contents ?? [];
       const nextContents = addContentRow(currentContents, registerDraft);
       const patch = tableName
         ? { tableName, contents: nextContents }
         : { contents: nextContents };
-      if (currentPopupItem.parentId) {
-        updateNestedItem(popupItemId, currentPopupItem.id, patch);
+      if (item.parentId) {
+        updateNestedItem(popupItemId, item.id, patch);
       } else {
-        updateItem(currentPopupItem.id, patch);
+        updateItem(item.id, patch);
       }
       closeRegisterPopup();
 
       if (tableName) {
-        const objectName = currentPopupItem.name ?? currentPopupItem.label ?? "オブジェクト";
-        const parent = items.find((i) => i.id === popupItemId);
-        const isNested = !!currentPopupItem.parentId;
-        const nestType = isNested ? 2 : (parent?.nestedItems?.length ? 1 : 0);
-        const parentTableName = isNested && parent?.tableName ? parent.tableName : null;
+        const objectName = item.name ?? item.label ?? "オブジェクト";
+        const isNested = !!item.parentId;
+        const nestType = isNested ? 2 : (parent.nestedItems?.length ? 1 : 0);
+        const parentTableName = isNested && parent.tableName ? parent.tableName : null;
         try {
           await fetch(`${API_BASE}/api/contents`, {
             method: "POST",
@@ -340,7 +346,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         } catch (_) {}
       }
     },
-    [popupItemId, currentPopupItem, items, registerDraft, updateItem, updateNestedItem, closeRegisterPopup]
+    [popupItemId, viewingNestedId, items, registerDraft, updateItem, updateNestedItem, closeRegisterPopup]
   );
 
   // マイナス押下: 選択モードに入る

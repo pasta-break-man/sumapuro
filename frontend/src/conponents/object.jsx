@@ -26,6 +26,8 @@ export default function CanvasPage() {
   return (
     <div
       style={{
+        width: "100%",
+        minHeight: "100vh",
         height: "100vh",
         position: "relative",
         background: "#f3f4f6",
