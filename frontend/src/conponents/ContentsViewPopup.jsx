@@ -52,6 +52,7 @@ export default function ContentsViewPopup({
   onClosePopup,
   renameObject,
   nestedItems = [],
+  highlightTableNames = [],
   currentPopupItem,
   viewingNestedId,
   onOpenNestedContents,
@@ -222,36 +223,98 @@ export default function ContentsViewPopup({
               fontSize: 13,
             }}
           >
-            <div style={{ color: "#94a3b8", marginBottom: 4 }}>
-              入っているオブジェクト（ダブルクリックで中身表示・ドラッグでキャンバスに戻す）
+            <div style={{ color: "#94a3b8", marginBottom: 8 }}>
+              入っているオブジェクト（図または名前をダブルクリックで中身表示・ドラッグでキャンバスに戻す）
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {nestedItems.map((n) => (
-                <span
-                  key={n.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData(
-                      "application/json",
-                      JSON.stringify({
-                        parentId: popupItemId,
-                        nestedItemId: n.id,
-                      })
-                    );
-                    e.dataTransfer.effectAllowed = "move";
-                  }}
-                  onDoubleClick={() => onOpenNestedContents?.(n.id)}
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    background: "#1e293b",
-                    color: "#e5e7eb",
-                    cursor: "grab",
-                  }}
-                >
-                  {n.name ?? n.label ?? "オブジェクト"}
-                </span>
-              ))}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {nestedItems.map((n) => {
+                const isSearchHighlight = highlightTableNames.includes(n.tableName);
+                return (
+                  <div
+                    key={n.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        "application/json",
+                        JSON.stringify({
+                          parentId: popupItemId,
+                          nestedItemId: n.id,
+                        })
+                      );
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    style={{
+                      width: 72,
+                      cursor: "grab",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onDoubleClick={() => onOpenNestedContents?.(n.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onOpenNestedContents?.(n.id);
+                        }
+                      }}
+                      style={{
+                        width: 72,
+                        height: 56,
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        background: n.fill ?? "#1e293b",
+                        border: isSearchHighlight
+                          ? "5px solid #ffff00"
+                          : "1px solid #334155",
+                        boxShadow: isSearchHighlight
+                          ? "0 0 12px rgba(34, 211, 238, 0.6)"
+                          : "none",
+                        marginBottom: 4,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                    {n.imageUrl ? (
+                      <img
+                        src={n.imageUrl}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onDoubleClick={() => onOpenNestedContents?.(n.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenNestedContents?.(n.id);
+                      }
+                    }}
+                    style={{
+                      fontSize: 12,
+                      color: "#e5e7eb",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      wordBreak: "break-all",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {n.name ?? n.label ?? "オブジェクト"}
+                  </div>
+                </div>
+              );
+              })}
             </div>
           </div>
         )}
@@ -321,8 +384,8 @@ export default function ContentsViewPopup({
                 style={{
                   display: "grid",
                   gridTemplateColumns: selectionMode
-                    ? "24px 1fr 1fr 0.8fr"
-                    : "1fr 1fr 0.8fr",
+                    ? "24px 1fr 1fr"
+                    : "1fr 1fr",
                   gap: 8,
                   alignItems: "center",
                   padding: "6px 4px",
@@ -358,7 +421,6 @@ export default function ContentsViewPopup({
                 )}
                 <span style={{ fontSize: 13 }}>{row.name || "—"}</span>
                 <span style={{ fontSize: 13 }}>{row.category || "—"}</span>
-                <span style={{ fontSize: 13 }}>{row.count ?? "—"}</span>
               </div>
             ))
           )}

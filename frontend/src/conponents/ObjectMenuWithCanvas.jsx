@@ -10,7 +10,7 @@ import NestConfirmModal from "./NestConfirmModal";
  * キャンバス＋ポップアップのみ。メニュー（オブジェクト追加UI）は object.jsx の右パネルに委譲。
  * ref で addObjectFromType を公開し、object.jsx のボタンから呼ぶ。
  */
-const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
+const ObjectMenuWithCanvas = React.forwardRef(({ highlightTableNames = [] }, ref) => {
   const stageWidth = 900;
   const stageHeight = 520;
 
@@ -100,6 +100,16 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     }
   }, [selectedIds, items]);
 
+  // items から削除されたオブジェクトの参照（shapeRefs）もクリーンアップしておく
+  useEffect(() => {
+    const validIds = new Set(items.map((i) => i.id));
+    Object.keys(shapeRefs.current).forEach((id) => {
+      if (!validIds.has(id)) {
+        delete shapeRefs.current[id];
+      }
+    });
+  }, [items]);
+
   React.useImperativeHandle(ref, () => ({
     addObjectFromType,
   }), [addObjectFromType]);
@@ -109,7 +119,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     e.dataTransfer.dropEffect = "copy";
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     const typeJson = e.dataTransfer.getData("application/json");
     if (!typeJson) return;
@@ -119,7 +129,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
       if (!rect) return;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      addObjectFromType(type, { x, y });
+      await addObjectFromType(type, { x, y });
     } catch (_) {}
   };
 
@@ -130,6 +140,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         stageHeight={stageHeight}
         items={items}
         selectedIds={selectedIds}
+        highlightTableNames={highlightTableNames}
         trRef={trRef}
         shapeRefs={shapeRefs}
         lastDragPosRef={lastDragPosRef}
@@ -146,7 +157,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         moveSelectedBy={moveSelectedBy}
         resizeItem={resizeItem}
       />
- main
+ {/* main */}
 
       {popupItemId && !registerPopupOpen && (
         <ContentsViewPopup
@@ -155,6 +166,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
           currentPopupItem={currentPopupItem}
           viewingNestedId={viewingNestedId}
           nestedItems={items.find((i) => i.id === popupItemId)?.nestedItems ?? []}
+          highlightTableNames={highlightTableNames}
           onOpenNestedContents={openNestedContents}
           onCloseNestedView={closeNestedView}
           onUnnest={unnestToCanvas}

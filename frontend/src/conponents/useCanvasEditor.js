@@ -17,6 +17,8 @@ function rectsOverlap(a, b) {
   );
 }
 
+const API_BASE = "http://localhost:5000";
+
 export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -79,43 +81,61 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
 
   const LEFT_MARGIN = 48;
 
-  const addObjectFromType = useCallback((type, position) => {
-    const { id: typeId, width, height, fill, label, imageUrl: typeImageUrl } = type;
-    const x =
-      position != null && typeof position.x === "number"
-        ? Math.max(0, Math.min(position.x, stageWidth - width))
-        : LEFT_MARGIN;
-    const y =
-      position != null && typeof position.y === "number"
-        ? Math.max(0, Math.min(position.y, stageHeight - height))
-        : (stageHeight - height) / 2;
-    setItems((prev) => {
-      const existingNames = prev.map((i) => i.name ?? i.label ?? "");
-      let displayName = label;
-      if (existingNames.includes(label)) {
-        let n = 2;
-        while (existingNames.includes(label + n)) n += 1;
-        displayName = label + n;
+  const addObjectFromType = useCallback(
+    async (type, position) => {
+      const { id: typeId, width, height, fill, label, imageUrl: typeImageUrl } = type;
+      let tableName;
+      try {
+        const res = await fetch(`${API_BASE}/api/objects/next-table-name`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type_id: typeId }),
+        });
+        const data = await res.json();
+        tableName = data?.table_name ?? null;
+      } catch (_) {
+        tableName = null;
       }
-      return [
-        ...prev,
-        {
-          id: `${typeId}-${Date.now()}`,
-          typeId,
-          x,
-          y,
-          width,
-          height,
-          fill,
-          label,
-          name: displayName,
-          contents: [],
-          parentId: undefined,
-          imageUrl: typeImageUrl ?? undefined,
-        },
-      ];
-    });
-  }, [stageWidth, stageHeight]);
+      if (!tableName) return;
+
+      const x =
+        position != null && typeof position.x === "number"
+          ? Math.max(0, Math.min(position.x, stageWidth - width))
+          : LEFT_MARGIN;
+      const y =
+        position != null && typeof position.y === "number"
+          ? Math.max(0, Math.min(position.y, stageHeight - height))
+          : (stageHeight - height) / 2;
+      setItems((prev) => {
+        const existingNames = prev.map((i) => i.name ?? i.label ?? "");
+        let displayName = label;
+        if (existingNames.includes(label)) {
+          let n = 2;
+          while (existingNames.includes(label + n)) n += 1;
+          displayName = label + n;
+        }
+        return [
+          ...prev,
+          {
+            id: `${typeId}-${Date.now()}`,
+            typeId,
+            tableName,
+            x,
+            y,
+            width,
+            height,
+            fill,
+            label,
+            name: displayName,
+            contents: [],
+            parentId: undefined,
+            imageUrl: typeImageUrl ?? undefined,
+          },
+        ];
+      });
+    },
+    [stageWidth, stageHeight]
+  );
 
   const handleDragEnd = useCallback((id, e) => {
     updateItem(id, { x: e.target.x(), y: e.target.y() });
@@ -233,8 +253,6 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setRegisterDraft((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  const API_BASE = "http://localhost:5000";
-
   const currentPopupItem = useMemo(() => {
     const parent = items.find((x) => x.id === popupItemId);
     if (!parent) return null;
@@ -271,31 +289,65 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   );
 
   // 登録ポップアップで「登録」: 1行追加して閉じる ＋ バックエンドに保存（親／入れ子どちらでも可）
-  const confirmRegisterAdd = useCallback(async () => {
-    if (!popupItemId || !currentPopupItem) return;
-    const currentContents = currentPopupItem.contents ?? [];
-    const nextContents = addContentRow(currentContents, registerDraft);
-    if (currentPopupItem.parentId) {
-      updateNestedItem(popupItemId, currentPopupItem.id, { contents: nextContents });
-    } else {
-      updateItem(popupItemId, { contents: nextContents });
-    }
-    closeRegisterPopup();
+  // 対象オブジェクトは popupItemId / viewingNestedId から毎回取得（固定値・古い参照を使わない）
+  const confirmRegisterAdd = useCallback(
+    async () => {
+      if (!popupItemId) return;
+      const parent = items.find((i) => i.id === popupItemId);
+      if (!parent) return;
+      const item = viewingNestedId
+        ? parent.nestedItems?.find((n) => n.id === viewingNestedId)
+        : parent;
+      if (!item) return;
 
-    const objectName = currentPopupItem.name ?? currentPopupItem.label ?? "オブジェクト";
-    try {
-      await fetch(`${API_BASE}/api/contents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          object_name: objectName,
-          name: registerDraft.name ?? "",
-          category: registerDraft.category ?? "",
-          count: registerDraft.count ?? 0,
-        }),
-      });
-    } catch (_) {}
-  }, [popupItemId, currentPopupItem, registerDraft, updateItem, updateNestedItem, closeRegisterPopup]);
+      let tableName = item.tableName;
+      if (!tableName && item.typeId) {
+        try {
+          const res = await fetch(`${API_BASE}/api/objects/next-table-name`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type_id: item.typeId }),
+          });
+          const data = await res.json();
+          tableName = data?.table_name ?? null;
+        } catch (_) {}
+      }
+
+      const currentContents = item.contents ?? [];
+      const nextContents = addContentRow(currentContents, registerDraft);
+      const patch = tableName
+        ? { tableName, contents: nextContents }
+        : { contents: nextContents };
+      if (item.parentId) {
+        updateNestedItem(popupItemId, item.id, patch);
+      } else {
+        updateItem(item.id, patch);
+      }
+      closeRegisterPopup();
+
+      if (tableName) {
+        const objectName = item.name ?? item.label ?? "オブジェクト";
+        const isNested = !!item.parentId;
+        const nestType = isNested ? 2 : (parent.nestedItems?.length ? 1 : 0);
+        const parentTableName = isNested && parent.tableName ? parent.tableName : null;
+        try {
+          await fetch(`${API_BASE}/api/contents`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              table_name: tableName,
+              object_name: objectName,
+              name: registerDraft.name ?? "",
+              category: registerDraft.category ?? "",
+              nest_type: nestType,
+              parent_table_name: parentTableName,
+            }),
+          });
+        } catch (_) {}
+      }
+    },
+    [popupItemId, viewingNestedId, items, registerDraft, updateItem, updateNestedItem, closeRegisterPopup]
+  );
 
   // マイナス押下: 選択モードに入る
   const enterSelectionMode = useCallback(() => {
@@ -316,36 +368,39 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   }, []);
 
   // 選択行を削除（画面上＋DB に反映）（親／入れ子どちらでも可）
-  const deleteSelectedRows = useCallback(async () => {
-    if (!popupItemId || !currentPopupItem || selectedRowIndices.length === 0)
-      return;
-    const currentContents = currentPopupItem.contents ?? [];
-    const nextContents = deleteContentRowsByIndices(
-      currentContents,
-      selectedRowIndices
-    );
-    if (currentPopupItem.parentId) {
-      updateNestedItem(popupItemId, currentPopupItem.id, { contents: nextContents });
-    } else {
-      updateItem(popupItemId, { contents: nextContents });
-    }
-    setSelectionMode(false);
-    setSelectedRowIndices([]);
+  const deleteSelectedRows = useCallback(
+    async () => {
+      if (!popupItemId || !currentPopupItem || selectedRowIndices.length === 0)
+        return;
+      const tableName = currentPopupItem.tableName;
+      const currentContents = currentPopupItem.contents ?? [];
+      const nextContents = deleteContentRowsByIndices(
+        currentContents,
+        selectedRowIndices
+      );
+      if (currentPopupItem.parentId) {
+        updateNestedItem(popupItemId, currentPopupItem.id, { contents: nextContents });
+      } else {
+        updateItem(popupItemId, { contents: nextContents });
+      }
+      setSelectionMode(false);
+      setSelectedRowIndices([]);
 
-    const objectName = currentPopupItem.name ?? currentPopupItem.label ?? "";
-    if (objectName) {
-      try {
-        await fetch(`${API_BASE}/api/contents/delete`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            object_name: objectName,
-            indices: selectedRowIndices,
-          }),
-        });
-      } catch (_) {}
-    }
-  }, [popupItemId, currentPopupItem, selectedRowIndices, updateItem, updateNestedItem]);
+      if (tableName) {
+        try {
+          await fetch(`${API_BASE}/api/contents/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              table_name: tableName,
+              indices: selectedRowIndices,
+            }),
+          });
+        } catch (_) {}
+      }
+    },
+    [popupItemId, currentPopupItem, selectedRowIndices, updateItem, updateNestedItem]
+  );
 
   const resizeItem = useCallback((id, { x, y, width, height }) => {
     updateItem(id, {
@@ -410,31 +465,32 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setDeleteConfirmItemId(null);
   }, []);
 
-  // 削除実行（画面上から削除し、対応する DB テーブル（オブジェクト名）も削除）
+  // 削除実行（画面上から削除し、対応する DB テーブルも削除）
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirmItemId) return;
     const item = items.find((i) => i.id === deleteConfirmItemId);
-    const objectNameToDrop = item?.name ?? item?.label ?? null;
+    const tableNameToDrop = item?.tableName ?? null;
 
     setItems((prev) => prev.filter((i) => i.id !== deleteConfirmItemId));
     setSelectedIds((prev) => prev.filter((id) => id !== deleteConfirmItemId));
     setDeleteConfirmItemId(null);
+    setNestConfirmPending(null);
     if (popupItemId === deleteConfirmItemId) {
       setPopupItemId(null);
       setRegisterPopupOpen(false);
     }
 
-    if (objectNameToDrop) {
+    if (tableNameToDrop) {
       try {
         await fetch(
-          `${API_BASE}/api/objects/${encodeURIComponent(objectNameToDrop)}`,
+          `${API_BASE}/api/objects/${encodeURIComponent(tableNameToDrop)}`,
           { method: "DELETE" }
         );
       } catch (_) {}
     }
   }, [deleteConfirmItemId, popupItemId, items]);
 
-  // 名前変更（表示名更新 ＋ DB のテーブル名も変更）（親／入れ子どちらでも可）
+  // 名前変更（表示名更新 ＋ DB の object_name カラムを更新）（親／入れ子どちらでも可）
   const renameObject = useCallback(
     async (id, newName, opts = {}) => {
       const { isNested = false, parentId } = opts;
@@ -442,19 +498,19 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         ? items.find((i) => i.id === parentId)?.nestedItems?.find((n) => n.id === id)
         : items.find((x) => x.id === id);
       if (!item || !newName.trim()) return;
-      const oldName = item.name ?? item.label ?? "";
+      const tableName = item.tableName;
       if (isNested && parentId) {
         updateNestedItem(parentId, id, { name: newName.trim() });
       } else {
         updateItem(id, { name: newName.trim() });
       }
-      if (oldName && oldName !== newName.trim()) {
+      if (tableName) {
         try {
           await fetch(`${API_BASE}/api/objects/rename`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              old_name: oldName,
+              table_name: tableName,
               new_name: newName.trim(),
             }),
           });

@@ -4,19 +4,18 @@
  */
 
 /** 1行分のデフォルト値 */
-export const DEFAULT_CONTENT_ROW = { name: "", category: "", count: 0 };
+export const DEFAULT_CONTENT_ROW = { name: "", category: "" };
 
 /**
  * 中身リストに1行追加する（純粋関数）
- * @param {Array<{ name: string, category: string, count: number }>} contents
- * @param {{ name: string, category: string, count: number }} row
+ * @param {Array<{ name: string, category: string }>} contents
+ * @param {{ name: string, category: string }} row
  * @returns {Array} 新しい contents 配列
  */
 export function addContentRow(contents, row) {
   const normalized = {
     name: String(row?.name ?? "").trim(),
     category: String(row?.category ?? "").trim(),
-    count: Number(row?.count) || 0,
   };
   return [...(contents ?? []), normalized];
 }
