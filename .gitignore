@@ -1,0 +1,18 @@
+# アカウント情報（パスワードハッシュ）はリポジトリに含めない
+backend/accounts.json
+
+# ユーザー別DBとマッピング（環境ごとのデータ）
+backend/data/
+
+# 旧グローバルDB（現在は data/*.db を利用）
+backend/sumapuro.db
+
+# Python
+backend/__pycache__/
+*.pyc
+__pycache__/
+
+# 環境
+.env
+.venv/
+venv/
