@@ -21,6 +21,7 @@ const CARD_STYLE = {
 
 /**
  * オブジェクトを別オブジェクトに重ねたときの入れ子確認モーダル
+ * AI使用．確認済み
  */
 export default function NestConfirmModal({ onConfirm, onCancel }) {
   return (
