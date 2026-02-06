@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import KonvaCanvas from "../App.jsx";
 
+// AI使用．確認済み
 export default function CanvasPage() {
   const [showToolbar, setShowToolbar] = useState(true);
 
