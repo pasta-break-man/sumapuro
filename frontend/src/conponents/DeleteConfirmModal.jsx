@@ -21,6 +21,7 @@ const CARD_STYLE = {
 
 /**
  * オブジェクト削除確認モーダル（1秒長押しで表示）
+ * AI使用．確認済み
  */
 export default function DeleteConfirmModal({ onConfirm, onCancel }) {
   return (
