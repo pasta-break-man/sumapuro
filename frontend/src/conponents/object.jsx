@@ -1,3 +1,5 @@
+// AI使用．確認済み
+
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ObjectMenuWithCanvas from "./ObjectMenuWithCanvas";
