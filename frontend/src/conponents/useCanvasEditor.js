@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   addContentRow,
   deleteContentRowsByIndices,
@@ -19,8 +19,72 @@ function rectsOverlap(a, b) {
 
 const API_BASE = "http://localhost:5000";
 
+const SAVE_DEBOUNCE_MS = 1500;
+
 export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
   const [items, setItems] = useState([]);
+  const itemsRef = useRef(items);
+  const loadedFromServerRef = useRef(false);
+  const saveTimeoutRef = useRef(null);
+
+  itemsRef.current = items;
+
+  // マウント時に保存済みキャンバス状態を復元
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/api/canvas/state`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const state = data?.state;
+        if (Array.isArray(state) && state.length > 0) {
+          setItems(state);
+        }
+        loadedFromServerRef.current = true;
+      })
+      .catch(() => {
+        if (!cancelled) loadedFromServerRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // items 変更をデバウンスして保存
+  useEffect(() => {
+    if (!loadedFromServerRef.current) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
+      fetch(`${API_BASE}/api/canvas/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ state: items }),
+      }).catch(() => {});
+    }, SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [items]);
+
+  // 離脱時に最新状態を保存（デバウンス待ちを避ける）
+  useEffect(() => {
+    const saveOnUnload = () => {
+      const state = itemsRef.current;
+      if (!Array.isArray(state)) return;
+      fetch(`${API_BASE}/api/canvas/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ state }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    window.addEventListener("beforeunload", saveOnUnload);
+    return () => window.removeEventListener("beforeunload", saveOnUnload);
+  }, []);
+
   const [selectedIds, setSelectedIds] = useState([]);
   const [popupItemId, setPopupItemId] = useState(null);
 
@@ -89,6 +153,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
         const res = await fetch(`${API_BASE}/api/objects/next-table-name`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ type_id: typeId }),
         });
         const data = await res.json();
@@ -306,6 +371,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           const res = await fetch(`${API_BASE}/api/objects/next-table-name`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ type_id: item.typeId }),
           });
           const data = await res.json();
@@ -334,6 +400,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           await fetch(`${API_BASE}/api/contents`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               table_name: tableName,
               object_name: objectName,
@@ -391,6 +458,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           await fetch(`${API_BASE}/api/contents/delete`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               table_name: tableName,
               indices: selectedRowIndices,
@@ -484,7 +552,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
       try {
         await fetch(
           `${API_BASE}/api/objects/${encodeURIComponent(tableNameToDrop)}`,
-          { method: "DELETE" }
+          { method: "DELETE", credentials: "include" }
         );
       } catch (_) {}
     }
@@ -509,6 +577,7 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
           await fetch(`${API_BASE}/api/objects/rename`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               table_name: tableName,
               new_name: newName.trim(),

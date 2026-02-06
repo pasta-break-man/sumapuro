@@ -30,9 +30,23 @@ export function AuthProvider({ children }) {
       credentials: "include",
       body: JSON.stringify({ username, password }),
     });
-    if (!res.ok) throw new Error("login failed");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || "login failed");
+    }
     const data = await res.json();
     setUser(data.user);
+  };
+
+  const register = async (username, password) => {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "登録に失敗しました");
   };
 
   const logout = async () => {
@@ -44,7 +58,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,25 +1,111 @@
 import React, { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ObjectMenuWithCanvas from "./ObjectMenuWithCanvas";
 import { OBJECT_TYPES } from "./objects";
 import { CATEGORY_OPTIONS } from "./RegisterPopup";
+import { useAuth } from "./login";
 
 const API_BASE = "http://localhost:5000";
+
+/**
+ * ログアウト確認ポップアップ（はい / いいえ）
+ */
+function LogoutConfirmModal({ onConfirm, onCancel }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 3000,
+      }}
+    >
+      <div
+        style={{
+          width: 280,
+          padding: 20,
+          borderRadius: 8,
+          background: "#fff",
+          color: "#111827",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+        }}
+      >
+        <p style={{ fontSize: 14, marginBottom: 16 }}>ログアウトしますか？</p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid #e5e7eb",
+              background: "#fff",
+              color: "#111827",
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            いいえ
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid #dc2626",
+              background: "#dc2626",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            はい
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * キャンバスページ：右スライドのオブジェクトメニュー + キャンバス
  * メニュー構成はここで定義（object.jsx の挙動に合わせる）
  */
 export default function CanvasPage() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [toolbarOpen, setToolbarOpen] = useState(true);
   const [panelTab, setPanelTab] = useState("objects"); // "objects" | "search"
   const [searchName, setSearchName] = useState("");
   const [searchCategory, setSearchCategory] = useState("");
   const [highlightTableNames, setHighlightTableNames] = useState([]);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const canvasRef = useRef(null);
 
+  // キャンバスサイズをブラウザの表示領域に合わせる（右パネル 300px を除く）
+  const [canvasSize, setCanvasSize] = useState({ width: 900, height: 520 });
   useEffect(() => {
-    fetch(`${API_BASE}/api/db/reset`, { method: "POST" }).catch(() => {});
-  }, []);
+    const update = () => {
+      const panelWidth = toolbarOpen ? 300 : 0;
+      setCanvasSize({
+        width: Math.max(400, window.innerWidth - panelWidth - 32),
+        height: Math.max(300, window.innerHeight - 32),
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [toolbarOpen]);
+
+  const handleLogoutConfirm = async () => {
+    setLogoutConfirmOpen(false);
+    await logout();
+    navigate("/login", { replace: true });
+  };
 
   const handleAddObject = async (type) => {
     if (canvasRef.current?.addObjectFromType) {
@@ -36,6 +122,7 @@ export default function CanvasPage() {
       const res = await fetch(`${API_BASE}/api/contents/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           name: searchName.trim(),
           category: searchCategory.trim(),
@@ -74,6 +161,8 @@ export default function CanvasPage() {
       <ObjectMenuWithCanvas
         ref={canvasRef}
         highlightTableNames={highlightTableNames}
+        stageWidth={canvasSize.width}
+        stageHeight={canvasSize.height}
       />
 
       <button
@@ -108,8 +197,11 @@ export default function CanvasPage() {
           zIndex: 1500,
           transform: toolbarOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 200ms ease",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
+        <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
         <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
           <button
             type="button"
@@ -261,7 +353,33 @@ export default function CanvasPage() {
             </div>
           </>
         )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setLogoutConfirmOpen(true)}
+          style={{
+            marginTop: 12,
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            background: "#fef2f2",
+            color: "#991b1b",
+            cursor: "pointer",
+            fontSize: 13,
+            width: "100%",
+          }}
+        >
+          ログアウト
+        </button>
       </div>
+
+      {logoutConfirmOpen && (
+        <LogoutConfirmModal
+          onConfirm={handleLogoutConfirm}
+          onCancel={() => setLogoutConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }

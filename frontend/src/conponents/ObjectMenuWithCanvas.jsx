@@ -10,9 +10,8 @@ import NestConfirmModal from "./NestConfirmModal";
  * キャンバス＋ポップアップのみ。メニュー（オブジェクト追加UI）は object.jsx の右パネルに委譲。
  * ref で addObjectFromType を公開し、object.jsx のボタンから呼ぶ。
  */
-const ObjectMenuWithCanvas = React.forwardRef(({ highlightTableNames = [] }, ref) => {
-  const stageWidth = 900;
-  const stageHeight = 520;
+const ObjectMenuWithCanvas = React.forwardRef(
+  ({ highlightTableNames = [], stageWidth = 1500, stageHeight = 800 }, ref) => {
 
   const {
     items,
