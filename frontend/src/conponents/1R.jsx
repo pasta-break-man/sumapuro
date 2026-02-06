@@ -1,3 +1,6 @@
+// 使用していないため，参照しなくてよい
+
+
 import React from "react";
 import { Stage, Layer, Rect } from "react-konva";
 
