@@ -559,5 +559,6 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     confirmNest,
     cancelNest,
     renameObject,
+    setObjectImage,
   };
 };

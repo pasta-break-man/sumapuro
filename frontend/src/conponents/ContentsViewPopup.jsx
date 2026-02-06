@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 const POPUP_STYLE = {
   position: "fixed",
@@ -51,6 +51,7 @@ export default function ContentsViewPopup({
   onToggleRowSelection,
   onClosePopup,
   renameObject,
+  onSetObjectImage,
   nestedItems = [],
   highlightTableNames = [],
   currentPopupItem,
@@ -59,7 +60,19 @@ export default function ContentsViewPopup({
   onCloseNestedView,
   onUnnest,
 }) {
+  const fileInputRef = useRef(null);
   const titleName = currentPopupItem?.name ?? currentPopupItem?.label ?? "オブジェクト";
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") onSetObjectImage?.(reader.result);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const handleBackdropDrop = (e) => {
     e.preventDefault();
@@ -137,17 +150,33 @@ export default function ContentsViewPopup({
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={() =>
-                onRenameStart(
-                  currentPopupItem?.name ?? currentPopupItem?.label ?? "オブジェクト"
-                )
-              }
-              style={BTN_BASE}
-            >
-              名前変更
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  onRenameStart(
+                    currentPopupItem?.name ?? currentPopupItem?.label ?? "オブジェクト"
+                  )
+                }
+                style={BTN_BASE}
+              >
+                名前変更
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={BTN_BASE}
+              >
+                画像変更
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleImageChange}
+              />
+            </>
           )}
         </div>
 

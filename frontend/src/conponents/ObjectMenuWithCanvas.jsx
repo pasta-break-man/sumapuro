@@ -52,6 +52,7 @@ const ObjectMenuWithCanvas = React.forwardRef(({ highlightTableNames = [] }, ref
     confirmNest,
     cancelNest,
     renameObject,
+    setObjectImage,
   } = useCanvasEditor({ stageWidth, stageHeight });
 
   const LONG_PRESS_MS = 1000;
@@ -195,6 +196,7 @@ const ObjectMenuWithCanvas = React.forwardRef(({ highlightTableNames = [] }, ref
           onToggleRowSelection={toggleRowSelection}
           onClosePopup={closePopup}
           renameObject={renameObject}
+          onSetObjectImage={setObjectImage}
         />
       )}
 
