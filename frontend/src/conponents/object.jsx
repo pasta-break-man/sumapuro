@@ -17,9 +17,9 @@ export default function CanvasPage() {
     fetch(`${API_BASE}/api/db/reset`, { method: "POST" }).catch(() => {});
   }, []);
 
-  const handleAddObject = (type) => {
+  const handleAddObject = async (type) => {
     if (canvasRef.current?.addObjectFromType) {
-      canvasRef.current.addObjectFromType(type);
+      await canvasRef.current.addObjectFromType(type);
     }
   };
 

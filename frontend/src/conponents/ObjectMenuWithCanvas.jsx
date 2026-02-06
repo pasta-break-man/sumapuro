@@ -119,7 +119,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     e.dataTransfer.dropEffect = "copy";
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     const typeJson = e.dataTransfer.getData("application/json");
     if (!typeJson) return;
@@ -129,7 +129,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
       if (!rect) return;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      addObjectFromType(type, { x, y });
+      await addObjectFromType(type, { x, y });
     } catch (_) {}
   };
 
