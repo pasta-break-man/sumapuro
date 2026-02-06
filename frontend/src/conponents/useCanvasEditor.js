@@ -419,6 +419,8 @@ export const useCanvasEditor = ({ stageWidth, stageHeight }) => {
     setItems((prev) => prev.filter((i) => i.id !== deleteConfirmItemId));
     setSelectedIds((prev) => prev.filter((id) => id !== deleteConfirmItemId));
     setDeleteConfirmItemId(null);
+    // 削除したオブジェクトに対する入れ子判定などの状態もリセットしておく
+    setNestConfirmPending(null);
     if (popupItemId === deleteConfirmItemId) {
       setPopupItemId(null);
       setRegisterPopupOpen(false);

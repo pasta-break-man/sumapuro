@@ -100,6 +100,16 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
     }
   }, [selectedIds, items]);
 
+  // items から削除されたオブジェクトの参照（shapeRefs）もクリーンアップしておく
+  useEffect(() => {
+    const validIds = new Set(items.map((i) => i.id));
+    Object.keys(shapeRefs.current).forEach((id) => {
+      if (!validIds.has(id)) {
+        delete shapeRefs.current[id];
+      }
+    });
+  }, [items]);
+
   React.useImperativeHandle(ref, () => ({
     addObjectFromType,
   }), [addObjectFromType]);
@@ -146,7 +156,7 @@ const ObjectMenuWithCanvas = React.forwardRef((props, ref) => {
         moveSelectedBy={moveSelectedBy}
         resizeItem={resizeItem}
       />
- main
+ {/* main */}
 
       {popupItemId && !registerPopupOpen && (
         <ContentsViewPopup
