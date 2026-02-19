@@ -113,7 +113,8 @@ const ObjectMenuWithCanvas = React.forwardRef(
 
   React.useImperativeHandle(ref, () => ({
     addObjectFromType,
-  }), [addObjectFromType]);
+    items, // 検索で入れ子の親を取得するために公開
+  }), [addObjectFromType, items]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
