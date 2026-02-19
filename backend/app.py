@@ -408,20 +408,31 @@ def search_contents():
                 category_pattern = (
                     "%" + escape_like(search_category) + "%" if search_category else "%"
                 )
-                rows = conn.execute(
+                # 検索にヒットした行の parent_table_name を取得（入れ子の親を取得）
+                hit_rows = conn.execute(
                     text(
                         f'SELECT DISTINCT parent_table_name FROM "{table_name}" '
                         "WHERE name LIKE :name_pattern ESCAPE '\\' AND category LIKE :category_pattern ESCAPE '\\'"
                     ),
                     {"name_pattern": name_pattern, "category_pattern": category_pattern},
                 ).fetchall()
-                for (parent_table_name,) in rows:
+                # 検索にヒットしたオブジェクト自体を結果に追加
+                if hit_rows:
                     results.append(
                         {
                             "table_name": table_name,
-                            "parent_table_name": parent_table_name,
+                            "parent_table_name": None,  # このオブジェクト自体
                         }
                     )
+                # 検索にヒットした行が入れ子になっている場合、その親も追加
+                for (parent_table_name,) in hit_rows:
+                    if parent_table_name:
+                        results.append(
+                            {
+                                "table_name": table_name,
+                                "parent_table_name": parent_table_name,
+                            }
+                        )
             except Exception:
                 continue
     return jsonify({"matches": results}), 200

@@ -131,10 +131,33 @@ export default function CanvasPage() {
       const data = await res.json();
       const matches = data?.matches ?? [];
       const tableSet = new Set();
+      const items = canvasRef.current?.items ?? [];
+      
+      // 検索にヒットしたオブジェクトと、その行が入れ子になっている場合の親を追加
       matches.forEach((m) => {
         tableSet.add(m.table_name);
         if (m.parent_table_name) tableSet.add(m.parent_table_name);
       });
+      
+      // 検索にヒットしたオブジェクト自体が入れ子になっている場合、その親も追加
+      matches.forEach((m) => {
+        // トップレベルと入れ子の両方をチェック
+        const hitTopLevel = items.find((item) => item.tableName === m.table_name && !item.parentId);
+        const hitNested = items.flatMap((item) => 
+          (item.nestedItems ?? []).filter((n) => n.tableName === m.table_name)
+        );
+        
+        // 入れ子オブジェクトがヒットした場合、その親を追加
+        hitNested.forEach((nested) => {
+          if (nested.parentId) {
+            const parent = items.find((item) => item.id === nested.parentId);
+            if (parent && parent.tableName) {
+              tableSet.add(parent.tableName);
+            }
+          }
+        });
+      });
+      
       setHighlightTableNames(Array.from(tableSet));
     } catch (_) {
       setHighlightTableNames([]);
@@ -238,7 +261,7 @@ export default function CanvasPage() {
         {panelTab === "objects" ? (
           <>
             <p style={{ fontSize: 12, color: "#374151", marginBottom: 12 }}>
-              クリックで左側に配置。ドラッグでキャンバスにドロップできます。
+              クリック・ドラッグ＆ドロップ➝配置
             </p>
             <div style={{ display: "grid", gap: 8 }}>
               {OBJECT_TYPES.map((t) => (
